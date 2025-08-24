@@ -1,0 +1,133 @@
+You are an expert full‑stack engineer. Build a production‑ready web app called “Attendance” for taking student attendance.
+
+## Tech stack
+- Next.js 14+ with App Router, React, TypeScript
+- TailwindCSS for styling
+- Node 20+
+- googleapis (JWT service account) to read/write Google Sheets
+- ESLint + Prettier
+- Vercel-style project structure (but runnable on Replit)
+
+## High-level features
+1) Load students from Google Sheets and display in a table.
+2) Filter by group_id; sort by last_name then first_name (Polish locale).
+3) Mark each student present/absent for a selected date; save to Google Sheets.
+4) Conflict-safe updates: if someone else edited after our last read, return conflicts.
+5) Simple, clean UI with responsive table and sticky header; “Save” button, “Select all present” toggle, group select, date picker.
+
+## Google Sheets layout (tabs + columns)
+Create these tabs **in one spreadsheet**:
+- `Students` (A:G): id | first_name | last_name | group_id | active | class | phone
+  - Rows start at row 2; row 1 are headers. active: true/false/1/0/yes/no/tak/nie.
+- `Sessions` (A:C): id | group_id | date (YYYY-MM-DD)
+- `Attendance` (A:D): session_id | student_id | status | updated_at
+  - status is "present" or "absent"
+- (Optional) `Groups`: id | name (not strictly required; can derive groups from Students!group_id)
+
+## Environment variables (.env)
+Create `.env` with:
+- GOOGLE_SERVICE_ACCOUNT_EMAIL=...
+- GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+  IMPORTANT: ensure literal \n characters are real newlines or escape as \\n then replace in code.
+- GOOGLE_SHEETS_SPREADSHEET_ID=... (the spreadsheet ID from its URL)
+
+Never commit .env. Provide a .env.example without secrets.
+
+## Server-side library: src/lib/sheets.ts
+Implement a typed helper using googleapis JWT:
+- getSheets(): returns sheets client using service account (scopes: spreadsheets).
+- norm(text): String(text).trim().normalize().toUpperCase()
+- Types:
+  - export type Group = { id: string; name: string }
+  - export type Student = { id: string; first_name: string; last_name: string; group_id: string; active: boolean; class?: string; phone?: string }
+  - export type AttendanceItem = { student_id: string; status: 'present' | 'absent'; updated_at?: string }
+
+Functions (use process.env.GOOGLE_SHEETS_SPREADSHEET_ID internally; do NOT require it as a parameter):
+- export async function getGroups(): Promise<Group[]>
+  * Try to derive unique group_id from Students!G; if error or none, return [{id:'G1', name:'G1'}].
+- export async function getStudents(groupId?: string): Promise<Student[]>
+  * Read Students!A1:G2000; map headers case-insensitively; coerce active; filter active==true; if groupId provided, filter; sort by (last_name+first_name) using locale 'pl'.
+- function buildSessionId(groupId: string, dateISO: string): `SESS-${dateISO}-${norm(groupId)}`
+- export async function findOrCreateSession(groupId: string, dateISO: string): Promise<string>
+  * Lookup Sessions!A1:C; if (group_id,date) exists, return id; else append [id, group, date] and return id.
+- export async function getAttendance(groupId: string, dateISO: string): Promise<{ session_id: string; items: Array<{ student_id: string; status: 'obecny' | 'nieobecny'; updated_at?: string }> }>
+  * session_id = findOrCreateSession(...); students = getStudents(groupId)
+  * Read Attendance!A1:D; take rows for session_id; build map by student_id; for each student return 'obecny' if latest status === 'present' else 'nieobecny'.
+- function normalizeStatus(s): 'obecny'|'nieobecny'
+  * present/obecny/1/true/tak/y/yes/t => 'obecny'; else 'nieobecny'
+- export async function setAttendance(groupId, dateISO, items)
+  * Read current rows for session; detect conflicts if client provided updated_at differs from server’s
+  * Append new rows [session_id, student_id, 'present'|'absent', nowISOString]
+  * Return { session_id, updated, conflicts } where updated has 'obecny'|'nieobecny'
+
+## API routes (App Router)
+Create route handlers under src/app/api:
+
+1) GET /api/groups
+- returns { groups: Group[] }
+
+2) GET /api/students?groupId=G1
+- returns { students: Student[] } (active only; sorted)
+
+3) GET /api/attendance?groupId=G1&date=2025-01-01
+- returns { session_id, items }
+
+4) POST /api/attendance
+- body: { groupId: string; date: string (YYYY-MM-DD); items: Array<{ student_id: string; status: 'obecny'|'nieobecny'; updated_at?: string }> }
+- server maps 'obecny'/'nieobecny' -> 'present'/'absent' before append
+- returns { session_id, updated, conflicts }
+
+All handlers must be server-only, safe for Replit; proper error handling with 4xx/5xx JSON.
+
+## Frontend UI (Tailwind)
+Page: src/app/page.tsx
+- Top toolbar:
+  - Select group (populated from /api/groups)
+  - Date picker (default today, formatted YYYY-MM-DD)
+  - Buttons: “Select all present”, “Save changes”
+- Table with sticky header:
+  - columns: First name, Last name, Group, Status (toggle)
+  - Status toggle: two-state button or switch; local optimistic state
+- Footer info: last saved time; conflict notices banner if any
+- Accessibility: buttons have aria-labels; focus states; use semantic table elements.
+
+UX details:
+- Load groups then students for selected group.
+- On date change, refetch attendance and merge with student list.
+- “Select all present” toggles all currently visible students to 'obecny'.
+- On Save: POST /api/attendance; if conflicts returned, show a non-blocking toast/banner listing student(s) with conflicts; re-fetch current attendance to resolve.
+
+## Client state
+- Use React server components for page shell; client components for interactive parts (table, toggles).
+- Keep selectedGroup, dateISO, rows: Array<{ student: Student; status: 'obecny'|'nieobecny'; updated_at?: string }>
+- Use fetch with proper HTTP methods; simple SWR or handmade revalidation.
+
+## Validation & errors
+- Validate required env vars at boot; show clear console error if missing.
+- API handlers validate query/body; return 400 with message if invalid.
+- When Google API fails (auth/permission), return 502 with hint:
+  - “Share the sheet with the service account email as Editor.”
+  - “Ensure GOOGLE_PRIVATE_KEY uses \\n or real newlines.”
+
+## Scripts and config
+- package.json scripts:
+  - dev: next dev
+  - build: next build
+  - start: next start
+  - lint: next lint
+- Tailwind configured (postcss, tailwind.config.js, globals.css)
+- tsconfig paths: "@/*" -> "src/*"
+- Add .env.example and README explaining how to create the service account and share the sheet.
+
+## Demo data task (optional)
+Create a small script `scripts/seed.ts` that prints example CSV headers and example rows for Students; document how to paste into the sheet.
+
+## Acceptance criteria (must pass)
+- `npm run dev` starts locally; landing page loads without errors.
+- /api/groups returns derived groups or default [{ id: 'G1', name: 'G1' }].
+- /api/students?groupId=G1 returns JSON array with active students, sorted by last_name then first_name (locale 'pl').
+- Selecting a date and saving attendance writes to the sheet and returns updated rows with updated_at timestamps.
+- Conflict path tested by sending stale updated_at; server returns conflicts array.
+- No secrets committed; .env.example present.
+
+Now generate the project and all files accordingly.
