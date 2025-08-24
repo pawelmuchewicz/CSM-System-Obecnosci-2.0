@@ -30,20 +30,20 @@ export function Navbar() {
 
   return (
     <nav className="border-b bg-white">
-      <div className="container mx-auto px-4 sm:px-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Desktop Navigation */}
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 flex-shrink-0">
             <Calendar className="w-6 h-6 text-primary" />
             <div className="flex flex-col">
-              <span className="text-lg sm:text-xl font-bold">System Obecności CSM</span>
-              <span className="text-xs text-muted-foreground">Creative Dance</span>
+              <span className="text-lg sm:text-xl font-bold whitespace-nowrap">System Obecności CSM</span>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">Creative Dance</span>
             </div>
           </div>
           
           {/* Desktop Navigation Links */}
-          <div className="hidden md:flex space-x-1">
+          <div className="hidden md:flex space-x-1 flex-1 justify-center">
             {navItems.map((item) => {
               const isActive = location === item.href;
               const Icon = item.icon;
@@ -52,7 +52,7 @@ export function Navbar() {
                 <Link key={item.href} href={item.href}>
                   <div
                     className={cn(
-                      "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                      "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap",
                       isActive
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -68,7 +68,7 @@ export function Navbar() {
           </div>
 
           {/* Desktop User Menu */}
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden md:flex items-center space-x-4 flex-shrink-0">
             {user && (
               <Button
                 variant="outline"
@@ -76,15 +76,16 @@ export function Navbar() {
                 onClick={handleLogout}
                 disabled={logoutMutation.isPending}
                 data-testid="button-logout"
+                className="whitespace-nowrap"
               >
-                <LogOut className="w-4 h-4 mr-2" />
-                <span className="hidden lg:inline">
+                <LogOut className="w-4 h-4 mr-2 flex-shrink-0" />
+                <span className="hidden xl:inline">
                   {logoutMutation.isPending ? 'Wylogowywanie...' : `Wyloguj ${user.firstName} ${user.lastName}`}
                 </span>
-                <span className="lg:hidden">
+                <span className="xl:hidden">
                   {logoutMutation.isPending ? 'Wyloguj...' : 'Wyloguj'}
                 </span>
-                {user.isAdmin && <span className="ml-1 text-xs bg-primary text-primary-foreground px-1 rounded">Admin</span>}
+                {user.isAdmin && <span className="ml-1 text-xs bg-primary text-primary-foreground px-1 rounded flex-shrink-0">Admin</span>}
               </Button>
             )}
           </div>
