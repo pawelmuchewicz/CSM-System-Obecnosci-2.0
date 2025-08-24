@@ -760,6 +760,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PUT /api/admin/users/:id/password - Update user password (admin only)
+  app.put("/api/admin/users/:id/password", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Only owners can update passwords
+      if (req.user?.role !== 'owner') {
+        return res.status(403).json({
+          message: "Tylko właściciel może resetować hasła",
+          code: "INSUFFICIENT_PERMISSIONS"
+        });
+      }
+
+      const userId = parseInt(req.params.id);
+      const { password } = req.body;
+
+      if (!password) {
+        return res.status(400).json({
+          message: "Hasło jest wymagane",
+          code: "MISSING_PASSWORD"
+        });
+      }
+
+      // Hash the new password
+      const hashedPassword = await hashPassword(password);
+      
+      await db
+        .update(instructorsAuth)
+        .set({
+          password: hashedPassword,
+          updatedAt: new Date()
+        })
+        .where(eq(instructorsAuth.id, userId));
+
+      res.json({
+        message: "Hasło zostało zmienione pomyślnie"
+      });
+    } catch (error) {
+      console.error("Error updating password:", error);
+      res.status(500).json({
+        message: "Błąd podczas zmiany hasła",
+        code: "UPDATE_PASSWORD_ERROR"
+      });
+    }
+  });
+
   // POST /api/admin/create-user - Create new user
   app.post("/api/admin/create-user", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {

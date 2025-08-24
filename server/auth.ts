@@ -88,7 +88,7 @@ function getUserPermissions(role: UserRole): UserPermissions {
         canViewAllGroups: false,
         canChangeContactInfo: false,
         canExpelStudents: false,
-        canViewReports: true,
+        canViewReports: false, // Instructors CANNOT view reports - only profile and attendance
       };
   }
 }
