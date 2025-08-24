@@ -24,8 +24,8 @@ export function Navbar() {
 
   const navItems = [
     { href: "/", label: "Obecność", icon: Calendar },
-    { href: "/reports", label: "Raporty", icon: BarChart3 },
-    ...(permissions.canManageUsers ? [{ href: "/admin", label: "Administracja", icon: Settings }] : []),
+    ...(user?.role === 'owner' || user?.role === 'reception' ? [{ href: "/reports", label: "Raporty", icon: BarChart3 }] : []),
+    ...(user?.role === 'owner' || user?.role === 'reception' ? [{ href: "/admin", label: "Administracja", icon: Settings }] : []),
   ];
 
   const handleLogout = () => {

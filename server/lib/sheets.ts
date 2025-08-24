@@ -191,8 +191,8 @@ function buildSessionId(groupId: string, dateISO: string): string {
   return `SESS-${dateISO}-${norm(groupId)}`;
 }
 
-// Helper function to normalize status
-function normalizeStatus(s: any): 'obecny' | 'nieobecny' | 'wypisani' {
+// Helper function to normalize attendance status
+function normalizeAttendanceStatus(s: any): 'obecny' | 'nieobecny' | 'wypisani' {
   const str = String(s).toLowerCase().trim();
   const presentValues = ['present', 'obecny', '1', 'true', 'tak', 'y', 'yes', 't'];
   const expelledValues = ['wypisani', 'expelled', 'removed', 'inactive', 'withdrawn'];
@@ -1052,6 +1052,23 @@ function statusToPolish(status: string): string {
   return statusMap[status.toLowerCase()] || status;
 }
 
+/**
+ * Convert Polish user status names to English system values
+ */
+function normalizeUserStatus(status: string): string {
+  const statusMap: { [key: string]: string } = {
+    'aktywny': 'active',
+    'nieaktywny': 'inactive',
+    'oczekuje': 'pending',
+    'active': 'active',
+    'inactive': 'inactive',
+    'pending': 'pending'
+  };
+  
+  const normalizedStatus = status.toLowerCase().trim();
+  return statusMap[normalizedStatus] || 'active';
+}
+
 export async function getUsersFromSheets(): Promise<UserSheetData[]> {
   try {
     const cacheKey = getCacheKey('users_sheet');
@@ -1072,13 +1089,14 @@ export async function getUsersFromSheets(): Promise<UserSheetData[]> {
       const row = rows[i];
       if (row && row[0]) { // username is required
         const rawRole = row[4] || 'instructor';
+        const rawStatus = row[5] || 'active';
         users.push({
           username: row[0] || '',
           firstName: row[1] || '',
           lastName: row[2] || '',
           email: row[3] || '',
           role: normalizeRole(rawRole),
-          status: row[5] || 'active',
+          status: normalizeUserStatus(rawStatus),
           active: row[6] === 'TRUE' || row[6] === 'true' || row[6] === '1'
         });
       }

@@ -182,7 +182,7 @@ export function AttendanceTable({
                             data-testid={`switch-attendance-${student.id}`}
                             aria-label={`Oznacz ${student.first_name} ${student.last_name} jako ${studentAttendance?.status === 'obecny' ? 'nieobecną' : 'obecną'}`}
                           />
-                          {user?.isAdmin && (
+                          {(user?.role === 'owner' || user?.role === 'reception') && (
                             <Button
                               size="sm"
                               variant={studentAttendance?.status === 'wypisani' ? 'default' : 'outline'}
@@ -193,7 +193,7 @@ export function AttendanceTable({
                               }`}
                               onClick={() => onAttendanceChange(student.id, 'wypisani')}
                               data-testid={`button-expelled-${student.id}`}
-                              title="Wypisz ucznia (tylko administratorzy)"
+                              title="Wypisz ucznia (tylko właściciel i recepcja)"
                             >
                               ⊘
                             </Button>
@@ -261,7 +261,7 @@ export function AttendanceTable({
           </div>
 
           {/* Instructors Section */}
-          {selectedGroup && (
+          {selectedGroup && (user?.role === 'owner' || user?.role === 'reception') && (
             <InstructorsSection groupId={selectedGroup} />
           )}
         </div>
