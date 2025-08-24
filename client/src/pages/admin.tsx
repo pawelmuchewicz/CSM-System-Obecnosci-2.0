@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserCheck, UserX, Settings, Plus, RefreshCw, Download, Upload, AlertCircle } from "lucide-react";
+import { Users, UserCheck, UserX, Settings, Plus, RefreshCw, Download, Upload, AlertCircle, Edit2 as Edit } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -233,6 +233,8 @@ function AllUsersTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [newUser, setNewUser] = useState({
     username: '',
     firstName: '',
@@ -354,6 +356,28 @@ function AllUsersTab() {
     },
   });
 
+  const updateUserMutation = useMutation({
+    mutationFn: async (userData: any) => {
+      await apiRequest('PATCH', `/api/admin/users/${userData.id}`, userData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Sukces",
+        description: "Użytkownik został zaktualizowany",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      setIsEditDialogOpen(false);
+      setEditingUser(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Błąd",
+        description: error.message || "Nie udało się zaktualizować użytkownika",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateUser = () => {
     if (!newUser.username || !newUser.firstName || !newUser.lastName) {
       toast({
@@ -364,6 +388,28 @@ function AllUsersTab() {
       return;
     }
     createUserMutation.mutate(newUser);
+  };
+
+  const handleEditUser = (user: User) => {
+    setEditingUser({
+      ...user,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      email: user.email || ''
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateUser = () => {
+    if (!editingUser || !editingUser.firstName || !editingUser.lastName) {
+      toast({
+        title: "Błąd",
+        description: "Wypełnij wszystkie wymagane pola",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateUserMutation.mutate(editingUser);
   };
 
   const getRoleDisplayName = (role: string) => {
@@ -462,53 +508,61 @@ function AllUsersTab() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="firstName">Imię *</Label>
+                      <Label htmlFor="firstName" className="text-sm font-medium text-gray-700">Imię *</Label>
                       <Input
                         id="firstName"
                         value={newUser.firstName}
                         onChange={(e) => setNewUser(prev => ({ ...prev, firstName: e.target.value }))}
+                        className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                        placeholder="Wprowadź imię"
                         data-testid="input-first-name"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="lastName">Nazwisko *</Label>
+                      <Label htmlFor="lastName" className="text-sm font-medium text-gray-700">Nazwisko *</Label>
                       <Input
                         id="lastName"
                         value={newUser.lastName}
                         onChange={(e) => setNewUser(prev => ({ ...prev, lastName: e.target.value }))}
+                        className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                        placeholder="Wprowadź nazwisko"
                         data-testid="input-last-name"
                       />
                     </div>
                   </div>
                   
                   <div>
-                    <Label htmlFor="username">Nazwa użytkownika *</Label>
+                    <Label htmlFor="username" className="text-sm font-medium text-gray-700">Nazwa użytkownika *</Label>
                     <Input
                       id="username"
                       value={newUser.username}
                       onChange={(e) => setNewUser(prev => ({ ...prev, username: e.target.value }))}
+                      className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      placeholder="Wprowadź nazwę użytkownika"
                       data-testid="input-username"
                     />
                   </div>
                   
                   <div>
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email</Label>
                     <Input
                       id="email"
                       type="email"
                       value={newUser.email}
                       onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
+                      className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      placeholder="Wprowadź adres email"
                       data-testid="input-email"
                     />
                   </div>
                   
                   <div>
-                    <Label htmlFor="role">Rola</Label>
+                    <Label htmlFor="role" className="text-sm font-medium text-gray-700">Rola</Label>
                     <Select value={newUser.role} onValueChange={(value) => setNewUser(prev => ({ ...prev, role: value }))}>
-                      <SelectTrigger data-testid="select-role">
+                      <SelectTrigger className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500" data-testid="select-role">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white border-gray-300">
                         <SelectItem value="instructor">Instruktor</SelectItem>
                         <SelectItem value="reception">Recepcja</SelectItem>
                         <SelectItem value="owner">Właściciel</SelectItem>
@@ -573,6 +627,14 @@ function AllUsersTab() {
                   <div className="flex space-x-2">
                     <Button
                       size="sm"
+                      variant="outline"
+                      onClick={() => handleEditUser(user)}
+                      data-testid={`button-edit-user-${user.id}`}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
                       variant={user.active ? "destructive" : "default"}
                       onClick={() => toggleUserStatusMutation.mutate({ userId: user.id, active: !user.active })}
                       disabled={toggleUserStatusMutation.isPending}
@@ -587,6 +649,95 @@ function AllUsersTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit User Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edytuj użytkownika</DialogTitle>
+          </DialogHeader>
+          {editingUser && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-firstName" className="text-sm font-medium text-gray-700">Imię *</Label>
+                  <Input
+                    id="edit-firstName"
+                    value={editingUser.firstName}
+                    onChange={(e) => setEditingUser(prev => prev ? { ...prev, firstName: e.target.value } : null)}
+                    className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    data-testid="input-edit-first-name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-lastName" className="text-sm font-medium text-gray-700">Nazwisko *</Label>
+                  <Input
+                    id="edit-lastName"
+                    value={editingUser.lastName}
+                    onChange={(e) => setEditingUser(prev => prev ? { ...prev, lastName: e.target.value } : null)}
+                    className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    data-testid="input-edit-last-name"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-username" className="text-sm font-medium text-gray-700">Nazwa użytkownika</Label>
+                <Input
+                  id="edit-username"
+                  value={editingUser.username}
+                  disabled
+                  className="mt-1 bg-gray-100 border-gray-300"
+                  data-testid="input-edit-username"
+                />
+                <p className="text-xs text-gray-500 mt-1">Nazwa użytkownika nie może być zmieniona</p>
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-email" className="text-sm font-medium text-gray-700">Email</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editingUser.email}
+                  onChange={(e) => setEditingUser(prev => prev ? { ...prev, email: e.target.value } : null)}
+                  className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  data-testid="input-edit-email"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-role" className="text-sm font-medium text-gray-700">Rola</Label>
+                <Select 
+                  value={editingUser.role} 
+                  onValueChange={(value) => setEditingUser(prev => prev ? { ...prev, role: value } : null)}
+                >
+                  <SelectTrigger className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500" data-testid="select-edit-role">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-gray-300">
+                    <SelectItem value="instructor">Instruktor</SelectItem>
+                    <SelectItem value="reception">Recepcja</SelectItem>
+                    <SelectItem value="owner">Właściciel</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                  Anuluj
+                </Button>
+                <Button 
+                  onClick={handleUpdateUser}
+                  disabled={updateUserMutation.isPending}
+                  data-testid="button-update-user"
+                >
+                  {updateUserMutation.isPending ? 'Aktualizowanie...' : 'Zaktualizuj'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

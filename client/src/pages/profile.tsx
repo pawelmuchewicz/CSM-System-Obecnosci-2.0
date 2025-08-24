@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { User, Lock, Settings, UserCheck } from "lucide-react";
+import { User, Lock, Settings, UserCheck, Edit2 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -19,6 +19,12 @@ export default function ProfilePage() {
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
+  });
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editedProfile, setEditedProfile] = useState({
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
   });
 
   const getRoleDisplayName = (role: string) => {
@@ -116,30 +122,102 @@ export default function ProfilePage() {
               <CardTitle>Informacje o koncie</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label className="text-base font-medium">Imię i nazwisko</Label>
-                  <p className="text-lg">{user.firstName} {user.lastName}</p>
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-medium">Dane osobowe</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setIsEditingProfile(!isEditingProfile);
+                      if (!isEditingProfile) {
+                        setEditedProfile({
+                          firstName: user.firstName || '',
+                          lastName: user.lastName || '',
+                          email: user.email || '',
+                        });
+                      }
+                    }}
+                  >
+                    <Edit2 className="w-4 h-4 mr-2" />
+                    {isEditingProfile ? 'Anuluj' : 'Edytuj'}
+                  </Button>
                 </div>
-                
-                <div>
-                  <Label className="text-base font-medium">Nazwa użytkownika</Label>
-                  <p className="text-lg font-mono">@{user.username}</p>
-                </div>
-                
-                <div>
-                  <Label className="text-base font-medium">Email</Label>
-                  <p className="text-lg">{user.email || 'Brak adresu email'}</p>
-                </div>
-                
-                <div>
-                  <Label className="text-base font-medium">Rola w systemie</Label>
-                  <div className="mt-1">
-                    <Badge variant="secondary" className="text-sm">
-                      {getRoleDisplayName(user.role)}
-                    </Badge>
+
+                {isEditingProfile ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="profile-firstName" className="text-sm font-medium text-gray-700">Imię</Label>
+                      <Input
+                        id="profile-firstName"
+                        value={editedProfile.firstName}
+                        onChange={(e) => setEditedProfile(prev => ({ ...prev, firstName: e.target.value }))}
+                        className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                        placeholder="Wprowadź imię"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="profile-lastName" className="text-sm font-medium text-gray-700">Nazwisko</Label>
+                      <Input
+                        id="profile-lastName"
+                        value={editedProfile.lastName}
+                        onChange={(e) => setEditedProfile(prev => ({ ...prev, lastName: e.target.value }))}
+                        className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                        placeholder="Wprowadź nazwisko"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label htmlFor="profile-email" className="text-sm font-medium text-gray-700">Email</Label>
+                      <Input
+                        id="profile-email"
+                        type="email"
+                        value={editedProfile.email}
+                        onChange={(e) => setEditedProfile(prev => ({ ...prev, email: e.target.value }))}
+                        className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                        placeholder="Wprowadź adres email"
+                      />
+                    </div>
+                    <div className="md:col-span-2 flex justify-end space-x-2">
+                      <Button variant="outline" onClick={() => setIsEditingProfile(false)}>
+                        Anuluj
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          // updateProfileMutation.mutate(editedProfile);
+                          setIsEditingProfile(false);
+                        }}
+                      >
+                        Zapisz zmiany
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="p-4 bg-gray-50 rounded-lg border">
+                      <Label className="text-sm font-medium text-gray-700">Imię i nazwisko</Label>
+                      <p className="text-lg font-medium mt-1">{user.firstName} {user.lastName}</p>
+                    </div>
+                    
+                    <div className="p-4 bg-gray-50 rounded-lg border">
+                      <Label className="text-sm font-medium text-gray-700">Nazwa użytkownika</Label>
+                      <p className="text-lg font-mono mt-1">@{user.username}</p>
+                    </div>
+                    
+                    <div className="p-4 bg-gray-50 rounded-lg border">
+                      <Label className="text-sm font-medium text-gray-700">Email</Label>
+                      <p className="text-lg mt-1">{user.email || 'Brak adresu email'}</p>
+                    </div>
+                    
+                    <div className="p-4 bg-gray-50 rounded-lg border">
+                      <Label className="text-sm font-medium text-gray-700">Rola w systemie</Label>
+                      <div className="mt-1">
+                        <Badge variant="secondary" className="text-sm">
+                          {getRoleDisplayName(user.role)}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>

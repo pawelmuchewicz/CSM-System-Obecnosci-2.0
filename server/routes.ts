@@ -1186,6 +1186,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PATCH /api/admin/users/:id - Update user information
+  app.patch("/api/admin/users/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Only owners and reception can update users
+      if (!req.user?.permissions?.canManageUsers) {
+        return res.status(403).json({
+          message: "Brak uprawnień do edycji użytkowników",
+          code: "INSUFFICIENT_PERMISSIONS"
+        });
+      }
+
+      const userId = parseInt(req.params.id);
+      const { firstName, lastName, email, role, active } = req.body;
+
+      if (!userId) {
+        return res.status(400).json({
+          message: "Nieprawidłowe ID użytkownika",
+          code: "INVALID_USER_ID"
+        });
+      }
+
+      // Check if user exists
+      const [existingUser] = await db
+        .select()
+        .from(instructorsAuth)
+        .where(eq(instructorsAuth.id, userId));
+
+      if (!existingUser) {
+        return res.status(404).json({
+          message: "Użytkownik nie został znaleziony",
+          code: "USER_NOT_FOUND"
+        });
+      }
+
+      // Update user
+      await db
+        .update(instructorsAuth)
+        .set({
+          firstName,
+          lastName,
+          email,
+          role: role as any,
+          active,
+          updatedAt: new Date()
+        })
+        .where(eq(instructorsAuth.id, userId));
+
+      res.json({
+        message: "Użytkownik został zaktualizowany",
+        userId
+      });
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({
+        message: "Błąd podczas aktualizacji użytkownika",
+        code: "USER_UPDATE_ERROR"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
