@@ -91,19 +91,20 @@ export function Toolbar({
           </div>
 
           {/* Show Inactive Toggle */}
-          <div className="flex items-center space-x-2 bg-gray-50 px-3 py-2 rounded-md shadow-sm border border-gray-200">
+          <div className="flex items-center space-x-2 bg-blue-50 px-3 py-2 rounded-md shadow-sm border-2 border-blue-200">
             {showInactive ? (
-              <Eye className="w-4 h-4 text-gray-600 flex-shrink-0" />
+              <Eye className="w-4 h-4 text-blue-700 flex-shrink-0" />
             ) : (
-              <EyeOff className="w-4 h-4 text-gray-600 flex-shrink-0" />
+              <EyeOff className="w-4 h-4 text-blue-700 flex-shrink-0" />
             )}
             <Switch
               checked={showInactive}
               onCheckedChange={onShowInactiveChange}
               data-testid="switch-show-inactive"
+              className="data-[state=checked]:bg-blue-600"
             />
-            <span className="text-sm text-gray-600 whitespace-nowrap">
-              Nieaktywni
+            <span className="text-sm font-medium text-blue-700 whitespace-nowrap">
+              {showInactive ? 'Ukryj nieaktywnych' : 'Pokaż nieaktywnych'}
             </span>
           </div>
         </div>

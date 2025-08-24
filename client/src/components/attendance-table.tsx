@@ -44,10 +44,11 @@ export function AttendanceTable({
   };
   // Liczenie wszystkich kategorii
   const activeStudents = students.filter(s => s.active);
+  const inactiveStudents = students.filter(s => !s.active);
   const attendanceValues = Array.from(attendance.values());
   const presentCount = attendanceValues.filter(a => a.status === 'obecny').length;
   const absentCount = attendanceValues.filter(a => a.status === 'nieobecny').length;
-  const expelledCount = attendanceValues.filter(a => a.status === 'wypisani').length;
+  const expelledCount = inactiveStudents.length; // Wypisani to nieaktywni uczniowie
 
   if (students.length === 0) {
     return (
@@ -150,11 +151,11 @@ export function AttendanceTable({
                             onCheckedChange={(checked) => 
                               onAttendanceChange(student.id, checked ? 'obecny' : 'nieobecny')
                             }
-                            className={`transition-colors duration-200 opacity-75 ${
+                            className={`transition-colors duration-200 ${
                               studentAttendance?.status === 'obecny' 
                                 ? 'data-[state=checked]:bg-green-600 bg-green-600' 
-                                : 'data-[state=unchecked]:bg-red-500 bg-red-500'
-                            }`}
+                                : 'data-[state=unchecked]:bg-white border border-gray-300'
+                            } data-[state=checked]:bg-red-500 hover:data-[state=checked]:bg-red-600`}
                             data-testid={`switch-inactive-attendance-${student.id}`}
                             aria-label={`Oznacz ${student.first_name} ${student.last_name} jako ${studentAttendance?.status === 'obecny' ? 'nieobecną' : 'obecną'}`}
                           />
