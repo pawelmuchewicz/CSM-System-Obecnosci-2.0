@@ -111,7 +111,7 @@ export default function AttendancePage() {
     setConflicts([]);
   };
 
-  const handleAttendanceChange = (studentId: string, status: 'obecny' | 'nieobecny') => {
+  const handleAttendanceChange = (studentId: string, status: 'obecny' | 'nieobecny' | 'wypisani') => {
     const currentItem = attendance.get(studentId);
     const newAttendance = new Map(attendance);
     newAttendance.set(studentId, {

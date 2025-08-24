@@ -19,15 +19,10 @@ export function LoginPage() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginRequest) => {
-      return apiRequest('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(data),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      return apiRequest('POST', '/api/auth/login', data);
     },
-    onSuccess: (data) => {
+    onSuccess: async (response) => {
+      const data = await response.json();
       toast({
         title: 'Sukces!',
         description: data.message || 'Zalogowano pomyślnie',
@@ -73,7 +68,7 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">System Obecności</CardTitle>
+          <CardTitle className="text-2xl font-bold">System Obecności CSM</CardTitle>
           <CardDescription>
             Zaloguj się aby uzyskać dostęp do systemu zarządzania obecnością
           </CardDescription>

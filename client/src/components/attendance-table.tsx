@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MoreVertical } from "lucide-react";
 import type { Student, AttendanceItem } from "@shared/schema";
 import { StudentDetailsModal } from './student-details-modal';
@@ -11,7 +12,7 @@ import { InstructorsSection } from './instructors-section';
 interface AttendanceTableProps {
   students: Student[];
   attendance: Map<string, AttendanceItem>;
-  onAttendanceChange: (studentId: string, status: 'obecny' | 'nieobecny') => void;
+  onAttendanceChange: (studentId: string, status: 'obecny' | 'nieobecny' | 'wypisani') => void;
   selectedDate: string;
   selectedGroup: string;
   selectedGroupName: string;
@@ -145,27 +146,33 @@ export function AttendanceTable({
                       </div>
                     ) : (
                       <div className="flex flex-col items-center space-y-2">
-                        <Switch
-                          checked={isPresent}
-                          onCheckedChange={(checked) => 
-                            onAttendanceChange(student.id, checked ? 'obecny' : 'nieobecny')
+                        <Select
+                          value={studentAttendance?.status || 'nieobecny'}
+                          onValueChange={(value: 'obecny' | 'nieobecny' | 'wypisani') => 
+                            onAttendanceChange(student.id, value)
                           }
-                          className={`transition-colors duration-200 ${
-                            isPresent 
-                              ? 'data-[state=checked]:bg-green-600 bg-green-600' 
-                              : 'data-[state=unchecked]:bg-red-500 bg-red-500'
-                          }`}
-                          data-testid={`switch-attendance-${student.id}`}
-                          aria-label={`Oznacz ${student.first_name} ${student.last_name} jako ${isPresent ? 'nieobecną' : 'obecną'}`}
-                        />
-                        <span 
-                          className={`text-xs font-medium ${
-                            isPresent ? 'text-green-700' : 'text-red-600'
-                          }`}
-                          data-testid={`status-text-${student.id}`}
                         >
-                          {isPresent ? 'Obecny/a' : 'Nieobecny/a'}
-                        </span>
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="obecny">Obecny/a</SelectItem>
+                            <SelectItem value="nieobecny">Nieobecny/a</SelectItem>
+                            <SelectItem value="wypisani">Wypisani</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Badge 
+                          variant={
+                            studentAttendance?.status === 'obecny' ? 'default' : 
+                            studentAttendance?.status === 'nieobecny' ? 'destructive' : 
+                            'secondary'
+                          }
+                          data-testid={`status-badge-${student.id}`}
+                        >
+                          {studentAttendance?.status === 'obecny' ? 'Obecny/a' : 
+                           studentAttendance?.status === 'nieobecny' ? 'Nieobecny/a' : 
+                           'Wypisani'}
+                        </Badge>
                       </div>
                     )}
                   </TableCell>

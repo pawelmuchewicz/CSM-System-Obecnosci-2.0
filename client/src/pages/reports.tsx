@@ -122,7 +122,7 @@ export function ReportsPage() {
               <Label htmlFor="statusFilter">Status</Label>
               <Select 
                 value={filters.status || 'all'} 
-                onValueChange={(value) => updateFilter('status', value as 'obecny' | 'nieobecny' | 'all')}
+                onValueChange={(value) => updateFilter('status', value as 'obecny' | 'nieobecny' | 'wypisani' | 'all')}
               >
                 <SelectTrigger data-testid="select-status">
                   <SelectValue />
@@ -131,6 +131,7 @@ export function ReportsPage() {
                   <SelectItem value="all">Wszystkie</SelectItem>
                   <SelectItem value="obecny">Obecni</SelectItem>
                   <SelectItem value="nieobecny">Nieobecni</SelectItem>
+                  <SelectItem value="wypisani">Wypisani</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -268,7 +269,11 @@ export function ReportsPage() {
                       <TableCell>{item.group_name}</TableCell>
                       <TableCell>{new Date(item.date).toLocaleDateString('pl-PL')}</TableCell>
                       <TableCell>
-                        <Badge variant={item.status === 'obecny' ? 'default' : 'destructive'}>
+                        <Badge variant={
+                          item.status === 'obecny' ? 'default' : 
+                          item.status === 'nieobecny' ? 'destructive' : 
+                          'secondary'
+                        }>
                           {item.status}
                         </Badge>
                       </TableCell>

@@ -31,7 +31,7 @@ export type Student = {
 
 export type AttendanceItem = {
   student_id: string;
-  status: 'obecny' | 'nieobecny';
+  status: 'obecny' | 'nieobecny' | 'wypisani';
   updated_at?: string;
   notes?: string;
 };
@@ -76,7 +76,7 @@ export const attendanceRequestSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   items: z.array(z.object({
     student_id: z.string(),
-    status: z.enum(['obecny', 'nieobecny']),
+    status: z.enum(['obecny', 'nieobecny', 'wypisani']),
     updated_at: z.string().optional(),
     notes: z.string().optional()
   }))
@@ -88,7 +88,7 @@ export interface AttendanceReportFilters {
   studentIds?: string[];
   dateFrom?: string;
   dateTo?: string;
-  status?: 'obecny' | 'nieobecny' | 'all';
+  status?: 'obecny' | 'nieobecny' | 'wypisani' | 'all';
 }
 
 export interface AttendanceReportItem {
@@ -97,7 +97,7 @@ export interface AttendanceReportItem {
   group_id: string;
   group_name: string;
   date: string;
-  status: 'obecny' | 'nieobecny';
+  status: 'obecny' | 'nieobecny' | 'wypisani';
   notes?: string;
 }
 

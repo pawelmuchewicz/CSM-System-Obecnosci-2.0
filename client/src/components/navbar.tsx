@@ -24,7 +24,10 @@ export function Navbar() {
         <div className="flex h-16 items-center space-x-8">
           <div className="flex items-center space-x-2">
             <Calendar className="w-6 h-6 text-primary" />
-            <span className="text-xl font-bold">Attendance</span>
+            <div className="flex flex-col">
+              <span className="text-xl font-bold">System Obecności CSM</span>
+              <span className="text-xs text-muted-foreground">CreativeDance</span>
+            </div>
           </div>
           
           <div className="flex space-x-1">

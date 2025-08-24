@@ -189,9 +189,12 @@ function buildSessionId(groupId: string, dateISO: string): string {
 }
 
 // Helper function to normalize status
-function normalizeStatus(s: any): 'obecny' | 'nieobecny' {
+function normalizeStatus(s: any): 'obecny' | 'nieobecny' | 'wypisani' {
   const str = String(s).toLowerCase().trim();
   const presentValues = ['present', 'obecny', '1', 'true', 'tak', 'y', 'yes', 't'];
+  const expelledValues = ['wypisani', 'expelled', 'removed', 'inactive', 'withdrawn'];
+  
+  if (expelledValues.includes(str)) return 'wypisani';
   return presentValues.includes(str) ? 'obecny' : 'nieobecny';
 }
 
