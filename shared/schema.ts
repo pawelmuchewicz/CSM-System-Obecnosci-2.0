@@ -3,6 +3,7 @@ import { z } from "zod";
 export type Group = {
   id: string;
   name: string;
+  spreadsheetId: string;
 };
 
 export type Student = {

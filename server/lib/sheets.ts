@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import type { Group, Student, AttendanceItem } from '@shared/schema';
 
 // Validate required environment variables
 if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
@@ -11,7 +12,24 @@ if (!process.env.GOOGLE_SHEETS_SPREADSHEET_ID) {
   throw new Error('Missing GOOGLE_SHEETS_SPREADSHEET_ID environment variable');
 }
 
-const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+// Configuration for groups and their spreadsheets
+// For now, we'll use the default spreadsheet with TTI group
+// Later this can be expanded to support multiple spreadsheets
+const GROUPS_CONFIG: Record<string, { name: string; spreadsheetId: string }> = {
+  'TTI': {
+    name: 'TTI',
+    spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID!
+  }
+};
+
+// Helper to get spreadsheet ID for a group
+function getSpreadsheetId(groupId: string): string {
+  const config = GROUPS_CONFIG[groupId];
+  if (!config) {
+    throw new Error(`Unknown group: ${groupId}`);
+  }
+  return config.spreadsheetId;
+}
 
 // Helper function to get authenticated sheets client
 export async function getSheets() {
@@ -46,42 +64,32 @@ function normalizeStatus(s: any): 'obecny' | 'nieobecny' {
 
 export async function getGroups(): Promise<Group[]> {
   try {
-    const sheets = await getSheets();
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: 'Students!A1:G2000'
-    });
-
-    const rows = response.data.values || [];
-    if (rows.length < 2) {
-      return [{ id: 'G1', name: 'G1' }];
-    }
-
-    // Extract unique group_ids from column D (index 3)
-    const groupIds = new Set<string>();
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i];
-      if (row[3]) {
-        groupIds.add(String(row[3]).trim());
-      }
-    }
-
-    if (groupIds.size === 0) {
-      return [{ id: 'G1', name: 'G1' }];
-    }
-
-    return Array.from(groupIds).map(id => ({ id, name: id }));
+    // Return groups from configuration
+    return Object.entries(GROUPS_CONFIG).map(([id, config]) => ({
+      id,
+      name: config.name,
+      spreadsheetId: config.spreadsheetId
+    }));
   } catch (error) {
     console.error('Error fetching groups:', error);
-    return [{ id: 'G1', name: 'G1' }];
+    return [{
+      id: 'TTI',
+      name: 'TTI',
+      spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID!
+    }];
   }
 }
 
 export async function getStudents(groupId?: string): Promise<Student[]> {
   try {
+    if (!groupId) {
+      return [];
+    }
+    
     const sheets = await getSheets();
+    const spreadsheetId = getSpreadsheetId(groupId);
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId,
       range: 'Students!A1:G2000'
     });
 
@@ -160,10 +168,11 @@ export async function findOrCreateSession(groupId: string, dateISO: string): Pro
   try {
     const sheets = await getSheets();
     const sessionId = buildSessionId(groupId, dateISO);
+    const spreadsheetId = getSpreadsheetId(groupId);
 
     // Check if session exists
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId,
       range: 'Sessions!A1:C1000'
     });
 
@@ -179,7 +188,7 @@ export async function findOrCreateSession(groupId: string, dateISO: string): Pro
 
     // Create new session
     await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId,
       range: 'Sessions!A:C',
       valueInputOption: 'RAW',
       requestBody: {
@@ -198,10 +207,11 @@ export async function getAttendance(groupId: string, dateISO: string): Promise<{
   try {
     const sessionId = await findOrCreateSession(groupId, dateISO);
     const students = await getStudents(groupId);
+    const spreadsheetId = getSpreadsheetId(groupId);
 
     const sheets = await getSheets();
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId,
       range: 'Attendance!A1:D10000'
     });
 
@@ -247,6 +257,7 @@ export async function setAttendance(
 ): Promise<{ session_id: string; updated: AttendanceItem[]; conflicts: AttendanceItem[] }> {
   try {
     const sessionId = await findOrCreateSession(groupId, dateISO);
+    const spreadsheetId = getSpreadsheetId(groupId);
     const sheets = await getSheets();
 
     // Get current attendance to check for conflicts
@@ -280,7 +291,7 @@ export async function setAttendance(
 
     if (newRows.length > 0) {
       await sheets.spreadsheets.values.append({
-        spreadsheetId: SPREADSHEET_ID,
+        spreadsheetId,
         range: 'Attendance!A:D',
         valueInputOption: 'RAW',
         requestBody: {
