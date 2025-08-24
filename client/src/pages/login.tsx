@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, Link } from 'wouter';
 import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import { UserPlus } from 'lucide-react';
 import type { LoginRequest } from '@shared/schema';
 
 export function LoginPage() {
@@ -113,7 +114,16 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
+          <div className="mt-6 text-center">
+            <Link href="/register">
+              <Button variant="ghost" size="sm" data-testid="link-register">
+                <UserPlus className="w-4 h-4 mr-2" />
+                Nie masz konta? Zarejestruj się
+              </Button>
+            </Link>
+          </div>
+
+          <div className="mt-4 text-center text-sm text-muted-foreground">
             <p>Testowe konto:</p>
             <p><strong>Login:</strong> admin</p>
             <p><strong>Hasło:</strong> admin123</p>

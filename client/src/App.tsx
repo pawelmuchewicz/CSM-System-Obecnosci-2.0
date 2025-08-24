@@ -7,6 +7,9 @@ import { Navbar } from "@/components/navbar";
 import AttendancePage from "@/pages/attendance";
 import { ReportsPage } from "@/pages/reports";
 import { LoginPage } from "@/pages/login";
+import AdminPage from "@/pages/admin";
+import ProfilePage from "@/pages/profile";
+import RegisterPage from "@/pages/register";
 import NotFound from "@/pages/not-found";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -30,6 +33,7 @@ function Router() {
     return (
       <Switch>
         <Route path="/login" component={LoginPage} />
+        <Route path="/register" component={RegisterPage} />
         <Route component={LoginPage} />
       </Switch>
     );
@@ -42,6 +46,8 @@ function Router() {
       <Switch>
         <Route path="/" component={AttendancePage} />
         <Route path="/reports" component={ReportsPage} />
+        <Route path="/admin" component={AdminPage} />
+        <Route path="/profile" component={ProfilePage} />
         <Route component={NotFound} />
       </Switch>
     </div>

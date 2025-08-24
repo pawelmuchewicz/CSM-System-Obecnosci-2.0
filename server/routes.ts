@@ -549,6 +549,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/admin/pending-users - List pending users (admin/reception only)
+  app.get("/api/admin/pending-users", requireAuth, async (req: AuthenticatedRequest, res) => {
+    if (!req.user?.permissions.canManageUsers) {
+      return res.status(403).json({ 
+        message: "Brak uprawnień do zarządzania użytkownikami",
+        code: "INSUFFICIENT_PERMISSIONS" 
+      });
+    }
+    
+    try {
+      const pendingUsers = await db
+        .select({
+          id: instructorsAuth.id,
+          username: instructorsAuth.username,
+          firstName: instructorsAuth.firstName,
+          lastName: instructorsAuth.lastName,
+          email: instructorsAuth.email,
+          phone: instructorsAuth.phone,
+          role: instructorsAuth.role,
+          status: instructorsAuth.status,
+          createdAt: instructorsAuth.createdAt,
+        })
+        .from(instructorsAuth)
+        .where(eq(instructorsAuth.status, 'pending'));
+        
+      res.json({ users: pendingUsers });
+    } catch (error) {
+      console.error("Error fetching pending users:", error);
+      res.status(500).json({ 
+        message: "Błąd podczas pobierania użytkowników",
+        code: "FETCH_USERS_ERROR" 
+      });
+    }
+  });
+  
+  // POST /api/admin/approve-user - Approve pending user (admin/reception only)
+  app.post("/api/admin/approve-user", requireAuth, async (req: AuthenticatedRequest, res) => {
+    if (!req.user?.permissions.canManageUsers) {
+      return res.status(403).json({ 
+        message: "Brak uprawnień do zarządzania użytkownikami",
+        code: "INSUFFICIENT_PERMISSIONS" 
+      });
+    }
+    
+    try {
+      const { userId, role } = updateUserStatusSchema.parse(req.body);
+      
+      // Update user status and role
+      const [updatedUser] = await db
+        .update(instructorsAuth)
+        .set({
+          status: 'active',
+          role: role || 'instructor',
+          active: true,
+          approvedBy: req.user.id,
+          approvedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(instructorsAuth.id, userId))
+        .returning();
+        
+      if (!updatedUser) {
+        return res.status(404).json({ 
+          message: "Użytkownik nie został znaleziony",
+          code: "USER_NOT_FOUND" 
+        });
+      }
+      
+      res.json({ 
+        message: "Użytkownik został zatwierdzony",
+        user: updatedUser 
+      });
+    } catch (error) {
+      console.error("Error approving user:", error);
+      res.status(400).json({ 
+        message: "Błąd podczas zatwierdzania użytkownika",
+        code: "APPROVE_USER_ERROR" 
+      });
+    }
+  });
+
+  // POST /api/auth/change-password - Change user password
+  app.post("/api/auth/change-password", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({
+          message: "Brak wymaganych pól",
+          code: "MISSING_FIELDS"
+        });
+      }
+      
+      if (newPassword.length < 6) {
+        return res.status(400).json({
+          message: "Nowe hasło musi mieć co najmniej 6 znaków",
+          code: "PASSWORD_TOO_SHORT"
+        });
+      }
+      
+      // Get current user
+      const [user] = await db
+        .select()
+        .from(instructorsAuth)
+        .where(eq(instructorsAuth.id, req.user!.id));
+        
+      if (!user) {
+        return res.status(404).json({
+          message: "Użytkownik nie został znaleziony",
+          code: "USER_NOT_FOUND"
+        });
+      }
+      
+      // Verify current password
+      const passwordValid = await verifyPassword(currentPassword, user.password);
+      if (!passwordValid) {
+        return res.status(400).json({
+          message: "Obecne hasło jest nieprawidłowe",
+          code: "INVALID_CURRENT_PASSWORD"
+        });
+      }
+      
+      // Hash new password and update
+      const hashedNewPassword = await hashPassword(newPassword);
+      await db
+        .update(instructorsAuth)
+        .set({
+          password: hashedNewPassword,
+          updatedAt: new Date()
+        })
+        .where(eq(instructorsAuth.id, req.user!.id));
+        
+      res.json({
+        message: "Hasło zostało zmienione pomyślnie"
+      });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      res.status(500).json({
+        message: "Błąd podczas zmiany hasła",
+        code: "CHANGE_PASSWORD_ERROR"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

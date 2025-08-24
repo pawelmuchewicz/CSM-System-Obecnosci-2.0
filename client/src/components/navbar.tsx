@@ -1,19 +1,31 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { BarChart3, Calendar, LogOut, User, Menu, X } from "lucide-react";
+import { BarChart3, Calendar, LogOut, User, Menu, X, Settings, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAuth, useLogout } from "@/hooks/useAuth";
+import { useAuth, useLogout, usePermissions } from "@/hooks/useAuth";
 import { useState } from "react";
 
 export function Navbar() {
   const [location] = useLocation();
   const { user } = useAuth();
+  const permissions = usePermissions();
   const logoutMutation = useLogout();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Role display mapping
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'owner': return 'Właściciel';
+      case 'reception': return 'Recepcja';
+      case 'instructor': return 'Instruktor';
+      default: return 'Użytkownik';
+    }
+  };
 
   const navItems = [
     { href: "/", label: "Obecność", icon: Calendar },
     { href: "/reports", label: "Raporty", icon: BarChart3 },
+    ...(permissions.canManageUsers ? [{ href: "/admin", label: "Administracja", icon: Settings }] : []),
   ];
 
   const handleLogout = () => {
@@ -68,25 +80,40 @@ export function Navbar() {
           </div>
 
           {/* Desktop User Menu */}
-          <div className="hidden md:flex items-center space-x-4 flex-shrink-0">
+          <div className="hidden md:flex items-center space-x-2 flex-shrink-0">
             {user && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-                disabled={logoutMutation.isPending}
-                data-testid="button-logout"
-                className="whitespace-nowrap"
-              >
-                <LogOut className="w-4 h-4 mr-2 flex-shrink-0" />
-                <span className="hidden xl:inline">
-                  {logoutMutation.isPending ? 'Wylogowywanie...' : `Wyloguj ${user.firstName} ${user.lastName}`}
-                </span>
-                <span className="xl:hidden">
-                  {logoutMutation.isPending ? 'Wyloguj...' : 'Wyloguj'}
-                </span>
-                {user.isAdmin && <span className="ml-1 text-xs bg-primary text-primary-foreground px-1 rounded flex-shrink-0">Admin</span>}
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.location.href = '/profile'}
+                  data-testid="button-profile"
+                  className="whitespace-nowrap"
+                >
+                  <User className="w-4 h-4 mr-2 flex-shrink-0" />
+                  <span className="hidden lg:inline">Profil</span>
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLogout}
+                  disabled={logoutMutation.isPending}
+                  data-testid="button-logout"
+                  className="whitespace-nowrap"
+                >
+                  <LogOut className="w-4 h-4 mr-2 flex-shrink-0" />
+                  <span className="hidden xl:inline">
+                    {logoutMutation.isPending ? 'Wylogowywanie...' : `Wyloguj ${user.firstName} ${user.lastName}`}
+                  </span>
+                  <span className="xl:hidden">
+                    {logoutMutation.isPending ? 'Wyloguj...' : 'Wyloguj'}
+                  </span>
+                  <span className="ml-1 text-xs bg-primary text-primary-foreground px-1 rounded flex-shrink-0">
+                    {getRoleDisplayName(user.role)}
+                  </span>
+                </Button>
+              </>
             )}
           </div>
 
@@ -140,7 +167,9 @@ export function Navbar() {
                 <div className="border-t pt-3 mt-3">
                   <div className="px-3 py-2 text-sm text-muted-foreground">
                     Zalogowany jako: <span className="font-medium">{user.firstName} {user.lastName}</span>
-                    {user.isAdmin && <span className="ml-1 text-xs bg-primary text-primary-foreground px-1 rounded">Admin</span>}
+                    <span className="ml-1 text-xs bg-primary text-primary-foreground px-1 rounded">
+                      {getRoleDisplayName(user.role)}
+                    </span>
                   </div>
                   <Button
                     variant="outline"
