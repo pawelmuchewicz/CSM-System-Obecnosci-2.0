@@ -1,5 +1,5 @@
 import { queryClient } from "./queryClient";
-import type { Group, Student, AttendanceResponse, AttendanceRequest, AttendanceUpdateResponse } from "@shared/schema";
+import type { Group, Student, AttendanceResponse, AttendanceRequest, AttendanceUpdateResponse, Instructor, InstructorGroup } from "@shared/schema";
 
 const API_BASE = "/api";
 
@@ -60,4 +60,29 @@ export function invalidateAttendanceQueries(groupId?: string, date?: string) {
   if (groupId) {
     queryClient.invalidateQueries({ queryKey: ['/api/students', groupId] });
   }
+}
+
+// Instructor API functions
+export async function fetchInstructors(): Promise<{ instructors: Instructor[] }> {
+  const response = await fetch(`${API_BASE}/instructors`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch instructors: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function fetchInstructorGroups(): Promise<{ instructorGroups: InstructorGroup[] }> {
+  const response = await fetch(`${API_BASE}/instructor-groups`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch instructor groups: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function fetchInstructorsForGroup(groupId: string): Promise<{ instructors: (Instructor & { role?: string })[] }> {
+  const response = await fetch(`${API_BASE}/instructors/group/${groupId}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch instructors for group: ${response.statusText}`);
+  }
+  return response.json();
 }

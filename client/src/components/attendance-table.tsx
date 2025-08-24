@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { MoreVertical } from "lucide-react";
 import type { Student, AttendanceItem } from "@shared/schema";
 import { StudentDetailsModal } from './student-details-modal';
+import { InstructorsSection } from './instructors-section';
 
 interface AttendanceTableProps {
   students: Student[];
@@ -188,22 +189,30 @@ export function AttendanceTable({
         </Table>
       </div>
 
-      {/* Table Footer with Summary */}
+      {/* Table Footer with Summary and Instructors */}
       <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-          <div className="flex items-center space-x-6 text-sm text-gray-600">
-            <div className="flex items-center" data-testid="summary-present">
-              <div className="w-3 h-3 bg-green-600 rounded-full mr-2"></div>
-              <span>Obecni: <span className="font-medium text-green-700">{presentCount}</span></span>
+        <div className="flex flex-col space-y-3">
+          {/* Statistics Row */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+            <div className="flex items-center space-x-6 text-sm text-gray-600">
+              <div className="flex items-center" data-testid="summary-present">
+                <div className="w-3 h-3 bg-green-600 rounded-full mr-2"></div>
+                <span>Obecni: <span className="font-medium text-green-700">{presentCount}</span></span>
+              </div>
+              <div className="flex items-center" data-testid="summary-absent">
+                <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                <span>Nieobecni: <span className="font-medium text-red-600">{absentCount}</span></span>
+              </div>
             </div>
-            <div className="flex items-center" data-testid="summary-absent">
-              <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-              <span>Nieobecni: <span className="font-medium text-red-600">{absentCount}</span></span>
+            <div className="text-sm text-gray-500" data-testid="text-last-saved">
+              Ostatnio zapisano: <span className="font-medium">--</span>
             </div>
           </div>
-          <div className="text-sm text-gray-500" data-testid="text-last-saved">
-            Ostatnio zapisano: <span className="font-medium">--</span>
-          </div>
+
+          {/* Instructors Section */}
+          {selectedGroup && (
+            <InstructorsSection groupId={selectedGroup} />
+          )}
         </div>
       </div>
 

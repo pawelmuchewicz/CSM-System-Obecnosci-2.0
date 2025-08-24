@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { getGroups, getStudents, getAttendance, setAttendance } from "./lib/sheets";
+import { getGroups, getStudents, getAttendance, setAttendance, getInstructors, getInstructorGroups, getInstructorsForGroup } from "./lib/sheets";
 import { attendanceRequestSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -134,6 +134,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(502).json({ 
         message: "Failed to save notes to Google Sheets",
         hint: "Ensure the sheet is shared with the service account as Editor"
+      });
+    }
+  });
+
+  // GET /api/instructors
+  app.get("/api/instructors", async (req, res) => {
+    try {
+      const instructors = await getInstructors();
+      res.json({ instructors });
+    } catch (error) {
+      console.error("Error fetching instructors:", error);
+      res.status(502).json({ 
+        message: "Failed to fetch instructors from Google Sheets",
+        hint: "Ensure the Instructors sheet exists and is shared with the service account as Editor"
+      });
+    }
+  });
+
+  // GET /api/instructor-groups
+  app.get("/api/instructor-groups", async (req, res) => {
+    try {
+      const instructorGroups = await getInstructorGroups();
+      res.json({ instructorGroups });
+    } catch (error) {
+      console.error("Error fetching instructor groups:", error);
+      res.status(502).json({ 
+        message: "Failed to fetch instructor groups from Google Sheets",
+        hint: "Ensure the InstructorGroups sheet exists and is shared with the service account as Editor"
+      });
+    }
+  });
+
+  // GET /api/instructors/group/:groupId
+  app.get("/api/instructors/group/:groupId", async (req, res) => {
+    try {
+      const { groupId } = req.params;
+      const instructors = await getInstructorsForGroup(groupId);
+      res.json({ instructors });
+    } catch (error) {
+      console.error("Error fetching instructors for group:", error);
+      res.status(502).json({ 
+        message: "Failed to fetch instructors for group from Google Sheets",
+        hint: "Ensure both Instructors and InstructorGroups sheets exist and are shared with the service account as Editor"
       });
     }
   });

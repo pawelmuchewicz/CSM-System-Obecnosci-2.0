@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import type { Group, Student, AttendanceItem } from '@shared/schema';
+import type { Group, Student, AttendanceItem, Instructor, InstructorGroup } from '@shared/schema';
 
 // Validate required environment variables
 if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
@@ -533,5 +533,177 @@ export async function setAttendance(
   } catch (error) {
     console.error('Error setting attendance:', error);
     throw new Error('Failed to save attendance to Google Sheets');
+  }
+}
+
+// Instructor management functions
+export async function getInstructors(): Promise<Instructor[]> {
+  try {
+    const sheets = await getSheets();
+    const mainSpreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID!;
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: mainSpreadsheetId,
+      range: 'Instructors!A1:G1000'
+    });
+
+    const rows = response.data.values || [];
+    if (rows.length === 0) return [];
+
+    const header = rows[0];
+    const instructors: Instructor[] = [];
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.length === 0) continue;
+
+      const instructor: Partial<Instructor> = {};
+      
+      header.forEach((columnName, index) => {
+        const value = row[index];
+        const normalizedColumn = columnName.toLowerCase().trim();
+        
+        switch (normalizedColumn) {
+          case 'id':
+            instructor.id = value ? String(value).trim() : '';
+            break;
+          case 'first_name':
+          case 'imie':
+            instructor.first_name = value ? String(value).trim() : '';
+            break;
+          case 'last_name':
+          case 'nazwisko':
+            instructor.last_name = value ? String(value).trim() : '';
+            break;
+          case 'email':
+          case 'mail':
+            instructor.email = value ? String(value).trim() : undefined;
+            break;
+          case 'phone':
+          case 'telefon':
+            instructor.phone = value ? String(value).trim() : undefined;
+            break;
+          case 'specialization':
+          case 'specjalizacja':
+            instructor.specialization = value ? String(value).trim() : undefined;
+            break;
+          case 'active':
+          case 'aktywny':
+            const activeValue = String(value || '').toLowerCase().trim();
+            instructor.active = ['true', '1', 'tak', 'yes'].includes(activeValue);
+            break;
+        }
+      });
+
+      // Validate required fields
+      if (instructor.id && instructor.first_name && instructor.last_name) {
+        instructors.push(instructor as Instructor);
+      }
+    }
+
+    // Sort by last_name then first_name
+    instructors.sort((a, b) => {
+      const lastNameCompare = a.last_name.localeCompare(b.last_name, 'pl');
+      if (lastNameCompare !== 0) return lastNameCompare;
+      return a.first_name.localeCompare(b.first_name, 'pl');
+    });
+
+    return instructors;
+  } catch (error) {
+    console.error('Error fetching instructors:', error);
+    throw new Error('Failed to fetch instructors from Google Sheets');
+  }
+}
+
+export async function getInstructorGroups(): Promise<InstructorGroup[]> {
+  try {
+    const sheets = await getSheets();
+    const mainSpreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID!;
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: mainSpreadsheetId,
+      range: 'InstructorGroups!A1:F1000'
+    });
+
+    const rows = response.data.values || [];
+    if (rows.length === 0) return [];
+
+    const header = rows[0];
+    const instructorGroups: InstructorGroup[] = [];
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.length === 0) continue;
+
+      const instructorGroup: Partial<InstructorGroup> = {};
+      
+      header.forEach((columnName, index) => {
+        const value = row[index];
+        const normalizedColumn = columnName.toLowerCase().trim();
+        
+        switch (normalizedColumn) {
+          case 'instructor_id':
+          case 'id_instruktora':
+            instructorGroup.instructor_id = value ? String(value).trim() : '';
+            break;
+          case 'group_id':
+          case 'id_grupy':
+            instructorGroup.group_id = value ? String(value).trim() : '';
+            break;
+          case 'role':
+          case 'rola':
+            instructorGroup.role = value ? String(value).trim() : undefined;
+            break;
+          case 'start_date':
+          case 'data_rozpoczecia':
+            instructorGroup.start_date = value ? String(value).trim() : undefined;
+            break;
+          case 'end_date':
+          case 'data_zakonczenia':
+            instructorGroup.end_date = value ? String(value).trim() : undefined;
+            break;
+        }
+      });
+
+      // Validate required fields
+      if (instructorGroup.instructor_id && instructorGroup.group_id) {
+        instructorGroups.push(instructorGroup as InstructorGroup);
+      }
+    }
+
+    return instructorGroups;
+  } catch (error) {
+    console.error('Error fetching instructor groups:', error);
+    throw new Error('Failed to fetch instructor groups from Google Sheets');
+  }
+}
+
+export async function getInstructorsForGroup(groupId: string): Promise<(Instructor & { role?: string })[]> {
+  try {
+    const [instructors, instructorGroups] = await Promise.all([
+      getInstructors(),
+      getInstructorGroups()
+    ]);
+
+    // Filter assignments for this group
+    const groupAssignments = instructorGroups.filter(ig => ig.group_id === groupId);
+
+    // Join instructors with their roles in this group
+    const instructorsWithRoles = groupAssignments
+      .map(assignment => {
+        const instructor = instructors.find(i => i.id === assignment.instructor_id);
+        if (!instructor) return null;
+        
+        return {
+          ...instructor,
+          role: assignment.role
+        };
+      })
+      .filter(Boolean) as (Instructor & { role?: string })[];
+
+    return instructorsWithRoles;
+  } catch (error) {
+    console.error('Error fetching instructors for group:', error);
+    throw new Error('Failed to fetch instructors for group');
   }
 }
