@@ -1,4 +1,23 @@
-import { type User, type InsertUser } from "@shared/schema";
+// User types for authentication storage
+export interface User {
+  id: number;
+  username: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  groupIds: string[];
+  isAdmin: boolean;
+}
+
+export interface InsertUser {
+  username: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  groupIds: string[];
+  isAdmin?: boolean;
+}
+
 import { randomUUID } from "crypto";
 
 // modify the interface with any CRUD methods
@@ -28,9 +47,9 @@ export class MemStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
+    const id = Math.floor(Math.random() * 1000000);
     const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    this.users.set(id.toString(), user);
     return user;
   }
 }
