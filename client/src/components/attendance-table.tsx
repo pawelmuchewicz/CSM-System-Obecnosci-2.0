@@ -38,8 +38,10 @@ export function AttendanceTable({
     setIsModalOpen(false);
     setSelectedStudent(null);
   };
+  // Liczenie tylko dla aktywnych uczniów
+  const activeStudents = students.filter(s => s.active);
   const presentCount = Array.from(attendance.values()).filter(a => a.status === 'obecny').length;
-  const absentCount = students.length - presentCount;
+  const absentCount = activeStudents.length - presentCount;
 
   if (students.length === 0) {
     return (
@@ -93,61 +95,78 @@ export function AttendanceTable({
             {students.map((student) => {
               const studentAttendance = attendance.get(student.id);
               const isPresent = studentAttendance?.status === 'obecny';
+              const isInactive = !student.active;
 
               return (
                 <TableRow 
                   key={student.id} 
-                  className={`hover:bg-gray-50 transition-colors duration-150 ${
-                    isPresent ? 'bg-green-50' : ''
+                  className={`transition-colors duration-150 ${
+                    isInactive 
+                      ? 'opacity-50 bg-gray-100' 
+                      : isPresent 
+                        ? 'bg-green-50 hover:bg-gray-50' 
+                        : 'hover:bg-gray-50'
                   }`}
                   data-testid={`row-student-${student.id}`}
                 >
                   <TableCell className="font-medium" data-testid={`text-firstname-${student.id}`}>
                     <div className="flex items-center">
-                      {isPresent && <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>}
-                      <span className={isPresent ? 'text-green-700 font-semibold' : ''}>
+                      {isPresent && !isInactive && <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>}
+                      <span className={isPresent && !isInactive ? 'text-green-700 font-semibold' : ''}>
                         {student.first_name}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell data-testid={`text-lastname-${student.id}`}>
-                    <span className={isPresent ? 'text-green-700 font-semibold' : ''}>
+                    <span className={isPresent && !isInactive ? 'text-green-700 font-semibold' : ''}>
                       {student.last_name}
                     </span>
                   </TableCell>
                   <TableCell className="text-center">
-                    <div className="flex flex-col items-center space-y-2">
-                      <Switch
-                        checked={isPresent}
-                        onCheckedChange={(checked) => 
-                          onAttendanceChange(student.id, checked ? 'obecny' : 'nieobecny')
-                        }
-                        className={`transition-colors duration-200 ${
-                          isPresent 
-                            ? 'data-[state=checked]:bg-green-600 bg-green-600' 
-                            : 'data-[state=unchecked]:bg-red-500 bg-red-500'
-                        }`}
-                        data-testid={`switch-attendance-${student.id}`}
-                        aria-label={`Oznacz ${student.first_name} ${student.last_name} jako ${isPresent ? 'nieobecną' : 'obecną'}`}
-                      />
-                      <span 
-                        className={`text-xs font-medium ${
-                          isPresent ? 'text-green-700' : 'text-red-600'
-                        }`}
-                        data-testid={`status-text-${student.id}`}
-                      >
-                        {isPresent ? 'Obecny/a' : 'Nieobecny/a'}
-                      </span>
-                    </div>
+                    {isInactive ? (
+                      <div className="flex flex-col items-center space-y-2">
+                        <Badge variant="secondary" className="bg-gray-200 text-gray-600 font-medium">
+                          WYPISANY
+                        </Badge>
+                        <span className="text-xs text-gray-500" data-testid={`status-text-${student.id}`}>
+                          Nieaktywny
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center space-y-2">
+                        <Switch
+                          checked={isPresent}
+                          onCheckedChange={(checked) => 
+                            onAttendanceChange(student.id, checked ? 'obecny' : 'nieobecny')
+                          }
+                          className={`transition-colors duration-200 ${
+                            isPresent 
+                              ? 'data-[state=checked]:bg-green-600 bg-green-600' 
+                              : 'data-[state=unchecked]:bg-red-500 bg-red-500'
+                          }`}
+                          data-testid={`switch-attendance-${student.id}`}
+                          aria-label={`Oznacz ${student.first_name} ${student.last_name} jako ${isPresent ? 'nieobecną' : 'obecną'}`}
+                        />
+                        <span 
+                          className={`text-xs font-medium ${
+                            isPresent ? 'text-green-700' : 'text-red-600'
+                          }`}
+                          data-testid={`status-text-${student.id}`}
+                        >
+                          {isPresent ? 'Obecny/a' : 'Nieobecny/a'}
+                        </span>
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-center">
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-gray-400 hover:text-gray-600"
+                      className={`${isInactive ? 'text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
                       onClick={() => handleStudentClick(student)}
                       aria-label={`Więcej opcji dla ${student.first_name} ${student.last_name}`}
                       data-testid={`button-options-${student.id}`}
+                      disabled={isInactive}
                     >
                       <MoreVertical className="w-4 h-4" />
                     </Button>

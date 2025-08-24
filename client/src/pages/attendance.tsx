@@ -127,8 +127,11 @@ export default function AttendancePage() {
   const handleToggleAllAttendance = () => {
     if (!studentsData?.students) return;
     
-    // Check if all students are present
-    const allPresent = studentsData.students.every(student => {
+    // Operuj tylko na aktywnych uczniach
+    const activeStudents = studentsData.students.filter(student => student.active);
+    
+    // Check if all active students are present
+    const allPresent = activeStudents.every(student => {
       const studentAttendance = attendance.get(student.id);
       return studentAttendance?.status === 'obecny';
     });
@@ -137,7 +140,7 @@ export default function AttendancePage() {
     const newStatus = allPresent ? 'nieobecny' : 'obecny';
     
     const newAttendance = new Map(attendance);
-    studentsData.students.forEach(student => {
+    activeStudents.forEach(student => {
       const currentItem = attendance.get(student.id);
       newAttendance.set(student.id, {
         student_id: student.id,
@@ -153,7 +156,11 @@ export default function AttendancePage() {
   const handleSave = async () => {
     if (!selectedGroup || !selectedDate) return;
 
-    const items = Array.from(attendance.values());
+    // Zapisuj tylko obecność dla aktywnych uczniów
+    const activeStudentIds = students.filter(s => s.active).map(s => s.id);
+    const items = Array.from(attendance.values()).filter(item => 
+      activeStudentIds.includes(item.student_id)
+    );
     
     // Check if attendance already exists
     try {
@@ -192,8 +199,9 @@ export default function AttendancePage() {
   const students = studentsData?.students || [];
   const isLoading = groupsLoading || studentsLoading || attendanceLoading;
   
-  // Check if all students are present
-  const allStudentsPresent = students.length > 0 && students.every(student => {
+  // Check if all active students are present
+  const activeStudents = students.filter(student => student.active);
+  const allStudentsPresent = activeStudents.length > 0 && activeStudents.every(student => {
     const studentAttendance = attendance.get(student.id);
     return studentAttendance?.status === 'obecny';
   });
@@ -233,7 +241,7 @@ export default function AttendancePage() {
           onGroupChange={handleGroupChange}
           selectedDate={selectedDate}
           onDateChange={handleDateChange}
-          studentCount={students.length}
+          studentCount={activeStudents.length}
           onToggleAllAttendance={handleToggleAllAttendance}
           allStudentsPresent={allStudentsPresent}
           onSave={handleSave}
