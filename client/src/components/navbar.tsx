@@ -1,13 +1,15 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { BarChart3, Calendar, LogOut, User } from "lucide-react";
+import { BarChart3, Calendar, LogOut, User, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth, useLogout } from "@/hooks/useAuth";
+import { useState } from "react";
 
 export function Navbar() {
   const [location] = useLocation();
   const { user } = useAuth();
   const logoutMutation = useLogout();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navItems = [
     { href: "/", label: "Obecność", icon: Calendar },
@@ -18,19 +20,30 @@ export function Navbar() {
     logoutMutation.mutate();
   };
 
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <nav className="border-b bg-white">
-      <div className="container mx-auto px-6">
-        <div className="flex h-16 items-center space-x-8">
+      <div className="container mx-auto px-4 sm:px-6">
+        {/* Desktop Navigation */}
+        <div className="flex h-16 items-center justify-between">
+          {/* Logo */}
           <div className="flex items-center space-x-2">
             <Calendar className="w-6 h-6 text-primary" />
             <div className="flex flex-col">
-              <span className="text-xl font-bold">System Obecności CSM</span>
+              <span className="text-lg sm:text-xl font-bold">System Obecności CSM</span>
               <span className="text-xs text-muted-foreground">Creative Dance</span>
             </div>
           </div>
           
-          <div className="flex space-x-1">
+          {/* Desktop Navigation Links */}
+          <div className="hidden md:flex space-x-1">
             {navItems.map((item) => {
               const isActive = location === item.href;
               const Icon = item.icon;
@@ -54,24 +67,99 @@ export function Navbar() {
             })}
           </div>
 
-          <div className="ml-auto flex items-center space-x-4">
+          {/* Desktop User Menu */}
+          <div className="hidden md:flex items-center space-x-4">
             {user && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleLogout}
-                  disabled={logoutMutation.isPending}
-                  data-testid="button-logout"
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLogout}
+                disabled={logoutMutation.isPending}
+                data-testid="button-logout"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                <span className="hidden lg:inline">
                   {logoutMutation.isPending ? 'Wylogowywanie...' : `Wyloguj ${user.firstName} ${user.lastName}`}
-                  {user.isAdmin && <span className="ml-1 text-xs bg-primary text-primary-foreground px-1 rounded">Admin</span>}
-                </Button>
-              </>
+                </span>
+                <span className="lg:hidden">
+                  {logoutMutation.isPending ? 'Wyloguj...' : 'Wyloguj'}
+                </span>
+                {user.isAdmin && <span className="ml-1 text-xs bg-primary text-primary-foreground px-1 rounded">Admin</span>}
+              </Button>
             )}
           </div>
+
+          {/* Mobile menu button */}
+          <div className="md:hidden">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleMobileMenu}
+              data-testid="button-mobile-menu"
+            >
+              {isMobileMenuOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
+            </Button>
+          </div>
         </div>
+
+        {/* Mobile Navigation Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t bg-white">
+            <div className="px-2 pt-2 pb-3 space-y-1">
+              {/* Navigation Links */}
+              {navItems.map((item) => {
+                const isActive = location === item.href;
+                const Icon = item.icon;
+                
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <div
+                      onClick={closeMobileMenu}
+                      className={cn(
+                        "flex items-center space-x-3 px-3 py-3 rounded-md text-base font-medium transition-colors",
+                        isActive
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                      data-testid={`nav-mobile-${item.label.toLowerCase()}`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span>{item.label}</span>
+                    </div>
+                  </Link>
+                );
+              })}
+              
+              {/* User Info and Logout */}
+              {user && (
+                <div className="border-t pt-3 mt-3">
+                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                    Zalogowany jako: <span className="font-medium">{user.firstName} {user.lastName}</span>
+                    {user.isAdmin && <span className="ml-1 text-xs bg-primary text-primary-foreground px-1 rounded">Admin</span>}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      handleLogout();
+                      closeMobileMenu();
+                    }}
+                    disabled={logoutMutation.isPending}
+                    className="w-full mt-2"
+                    data-testid="button-mobile-logout"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    {logoutMutation.isPending ? 'Wylogowywanie...' : 'Wyloguj'}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );
