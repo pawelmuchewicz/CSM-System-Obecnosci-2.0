@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserCheck, UserX, Settings, Plus, RefreshCw, Download, Upload, AlertCircle, Edit2 as Edit } from "lucide-react";
+import { Users, UserCheck, UserX, Settings, Plus, RefreshCw, Download, Upload, AlertCircle, Edit2 as Edit, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -97,6 +97,32 @@ export default function AdminPage() {
     approveUserMutation.mutate({ userId, role });
   };
 
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      await apiRequest('DELETE', `/api/admin/users/${userId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Sukces",
+        description: "Nieaktywny użytkownik został usunięty",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Błąd",
+        description: error?.message || "Nie udało się usunąć użytkownika",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteUser = (userId: number) => {
+    if (window.confirm('Czy na pewno chcesz usunąć tego nieaktywnego użytkownika? Ta operacja jest nieodwracalna.')) {
+      deleteUserMutation.mutate(userId);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
@@ -124,6 +150,9 @@ export default function AdminPage() {
           <Card>
             <CardHeader>
               <CardTitle>Konta oczekujące na zatwierdzenie</CardTitle>
+              <p className="text-sm text-muted-foreground mt-2">
+                <strong>Instruktor</strong> • <strong>Recepcja</strong> • Hasło: <code className="bg-gray-100 px-1 rounded">wybierz funkcję dla użytkownika</code>
+              </p>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -414,7 +443,7 @@ function AllUsersTab() {
 
   const getRoleDisplayName = (role: string) => {
     switch (role) {
-      case 'owner': return 'Nauczyciel';
+      case 'owner': return 'Właściciel';
       case 'reception': return 'Recepcja';
       case 'instructor': return 'Instruktor';
       default: return role;
@@ -642,6 +671,18 @@ function AllUsersTab() {
                     >
                       {user.active ? 'Dezaktywuj' : 'Aktywuj'}
                     </Button>
+                    {!user.active && permissions.isOwner && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDeleteUser(user.id)}
+                        disabled={deleteUserMutation.isPending}
+                        data-testid={`button-delete-user-${user.id}`}
+                        title="Usuń nieaktywnego użytkownika (tylko właściciel)"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}

@@ -1031,7 +1031,7 @@ function normalizeRole(role: string): string {
  */
 function roleToPolish(role: string): string {
   const roleMap: { [key: string]: string } = {
-    'owner': 'nauczyciel',
+    'owner': 'właściciel',
     'reception': 'recepcja',
     'instructor': 'instruktor'
   };

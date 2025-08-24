@@ -1251,6 +1251,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DELETE /api/admin/users/:id - Delete inactive user (owner only)
+  app.delete("/api/admin/users/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Only owners can delete users
+      if (req.user?.role !== 'owner') {
+        return res.status(403).json({
+          message: "Tylko właściciel może usuwać użytkowników",
+          code: "INSUFFICIENT_PERMISSIONS"
+        });
+      }
+
+      const userId = parseInt(req.params.id);
+
+      if (!userId) {
+        return res.status(400).json({
+          message: "Nieprawidłowe ID użytkownika",
+          code: "INVALID_USER_ID"
+        });
+      }
+
+      // Check if user exists and is inactive
+      const [existingUser] = await db
+        .select()
+        .from(instructorsAuth)
+        .where(eq(instructorsAuth.id, userId));
+
+      if (!existingUser) {
+        return res.status(404).json({
+          message: "Użytkownik nie został znaleziony",
+          code: "USER_NOT_FOUND"
+        });
+      }
+
+      if (existingUser.active) {
+        return res.status(400).json({
+          message: "Można usunąć tylko nieaktywnych użytkowników",
+          code: "USER_IS_ACTIVE"
+        });
+      }
+
+      // Delete user
+      await db
+        .delete(instructorsAuth)
+        .where(eq(instructorsAuth.id, userId));
+
+      res.json({
+        message: "Użytkownik został usunięty",
+        deletedUserId: userId
+      });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({
+        message: "Błąd podczas usuwania użytkownika",
+        code: "USER_DELETE_ERROR"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
