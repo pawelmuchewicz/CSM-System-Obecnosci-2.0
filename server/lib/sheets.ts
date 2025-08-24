@@ -391,7 +391,7 @@ export async function setAttendance(
       }
     }
 
-    // Append new attendance records for valid updates
+    // Update existing attendance records or add new ones
     // Use Polish timezone (UTC+1 in winter, UTC+2 in summer)
     const now = new Date();
     const polandTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (2 * 3600000)); // UTC+2 for Poland summer time
@@ -401,9 +401,30 @@ export async function setAttendance(
     const config = GROUPS_CONFIG[groupId];
     const groupName = config?.name || groupId;
     
-    const newRows = validUpdates.map(item => {
+    // Get all attendance data to find existing rows
+    const attendanceResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'Attendance!A:I'
+    });
+    
+    const allRows = attendanceResponse.data.values || [];
+    const existingRowsMap = new Map<string, number>(); // student_id -> row index
+    
+    // Find existing rows for this session
+    for (let i = 1; i < allRows.length; i++) {
+      const row = allRows[i];
+      if (row[0] === sessionId && row[1]) {
+        const studentId = row[1];
+        existingRowsMap.set(studentId, i + 1); // +1 because sheets are 1-indexed
+      }
+    }
+    
+    const updateOperations = [];
+    const newRows = [];
+    
+    for (const item of validUpdates) {
       const student = studentsMap.get(item.student_id);
-      return [
+      const rowData = [
         sessionId,                                    // A: session_id
         item.student_id,                             // B: student_id
         item.status,                                 // C: status (po polsku: obecny/nieobecny)
@@ -414,12 +435,37 @@ export async function setAttendance(
         student?.phone || '',                        // H: phone
         groupName                                    // I: group_name
       ];
-    });
-
+      
+      const existingRowIndex = existingRowsMap.get(item.student_id);
+      
+      if (existingRowIndex) {
+        // Update existing row
+        updateOperations.push({
+          range: `Attendance!A${existingRowIndex}:I${existingRowIndex}`,
+          values: [rowData]
+        });
+      } else {
+        // Add new row
+        newRows.push(rowData);
+      }
+    }
+    
+    // Perform updates for existing rows
+    if (updateOperations.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          valueInputOption: 'RAW',
+          data: updateOperations
+        }
+      });
+    }
+    
+    // Append new rows
     if (newRows.length > 0) {
       await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: 'Attendance!A:I', // A-I columns as per sheet structure
+        range: 'Attendance!A:I',
         valueInputOption: 'RAW',
         requestBody: {
           values: newRows
