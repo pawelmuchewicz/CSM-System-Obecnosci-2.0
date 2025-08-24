@@ -368,11 +368,19 @@ export async function setAttendance(
     const students = await getStudents(groupId);
     const studentsMap = new Map(students.map(s => [s.id, s]));
 
-    // Check for conflicts
+    // Check for conflicts - only if both frontend and backend have timestamps
     for (const item of items) {
       const current = currentAttendance.items.find(a => a.student_id === item.student_id);
       
-      if (item.updated_at && current?.updated_at && item.updated_at !== current.updated_at) {
+      // Only check for conflicts if:
+      // 1. Frontend has a timestamp (item.updated_at exists)
+      // 2. Backend has a timestamp (current.updated_at exists) 
+      // 3. They are different
+      // If frontend doesn't have timestamp, it's a new change, so no conflict
+      if (item.updated_at && current?.updated_at && 
+          item.updated_at !== current.updated_at && 
+          item.status !== current.status) {
+        // Only conflict if status actually changed
         conflicts.push({
           student_id: item.student_id,
           status: current.status,
