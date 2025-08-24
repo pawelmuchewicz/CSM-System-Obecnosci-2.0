@@ -48,6 +48,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(instructorGroupAssignments)
         .where(eq(instructorGroupAssignments.instructorId, user.id));
 
+      // Get user's permissions and role info
+      const userRole = (user.role || 'instructor') as 'owner' | 'reception' | 'instructor';
+      const getUserPermissions = (role: 'owner' | 'reception' | 'instructor') => {
+        switch (role) {
+          case 'owner':
+            return {
+              canManageUsers: true,
+              canAssignGroups: true,
+              canManageStudents: true,
+              canViewAllGroups: true,
+              canChangeContactInfo: true,
+              canExpelStudents: true,
+              canViewReports: true,
+            };
+          case 'reception':
+            return {
+              canManageUsers: true,
+              canAssignGroups: true,
+              canManageStudents: true,
+              canViewAllGroups: true,
+              canChangeContactInfo: true,
+              canExpelStudents: true,
+              canViewReports: true,
+            };
+          case 'instructor':
+          default:
+            return {
+              canManageUsers: false,
+              canAssignGroups: false,
+              canManageStudents: false,
+              canViewAllGroups: false,
+              canChangeContactInfo: false,
+              canExpelStudents: false,
+              canViewReports: true,
+            };
+        }
+      };
+      
+      const permissions = getUserPermissions(userRole);
+
       res.json({ 
         message: "Zalogowano pomyślnie",
         user: {
@@ -56,8 +96,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           firstName: user.firstName,
           lastName: user.lastName,
           email: user.email,
+          role: userRole,
+          status: user.status || 'active',
           groupIds: groupAssignments.map(g => g.groupId),
-          isAdmin: groupAssignments.some(g => g.role === 'admin'),
+          isAdmin: userRole === 'owner' || userRole === 'reception',
+          permissions,
         }
       });
     } catch (error) {
