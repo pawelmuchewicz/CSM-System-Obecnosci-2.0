@@ -12,6 +12,9 @@ if (!process.env.GOOGLE_SHEETS_SPREADSHEET_ID) {
   throw new Error('Missing GOOGLE_SHEETS_SPREADSHEET_ID environment variable');
 }
 
+// Users spreadsheet configuration
+const USERS_SPREADSHEET_ID = '1qsGYl1VQ1XRw8wJ2EfXWptsw4ZhfjQM-0Dbs09c7_jU';
+
 // Enhanced cache system to reduce Google Sheets API calls
 interface CacheItem<T> {
   data: T;
@@ -984,5 +987,173 @@ async function getGroupSessions(groupId: string, dateFrom?: string, dateTo?: str
   } catch (error) {
     console.error(`Error fetching sessions for group ${groupId}:`, error);
     return [];
+  }
+}
+
+// ===== USER SYNCHRONIZATION FUNCTIONS =====
+
+interface UserSheetData {
+  username: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  status: string;
+  active: boolean;
+}
+
+/**
+ * Read users from Google Sheets
+ * Columns: username, first_name, last_name, email, role, status, active
+ * Note: Passwords are NOT stored in Google Sheets for security reasons
+ */
+export async function getUsersFromSheets(): Promise<UserSheetData[]> {
+  try {
+    const cacheKey = getCacheKey('users_sheet');
+    const cached = getFromCache<UserSheetData[]>(cacheKey, CACHE_DURATION);
+    if (cached) return cached;
+
+    const sheets = await getSheets();
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: USERS_SPREADSHEET_ID,
+      range: 'A1:G1000'
+    });
+
+    const rows = response.data.values || [];
+    const users: UserSheetData[] = [];
+    
+    // Skip header row (row 0)
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (row && row[0]) { // username is required
+        users.push({
+          username: row[0] || '',
+          firstName: row[1] || '',
+          lastName: row[2] || '',
+          email: row[3] || '',
+          role: row[4] || 'instructor',
+          status: row[5] || 'active',
+          active: row[6] === 'TRUE' || row[6] === 'true' || row[6] === '1'
+        });
+      }
+    }
+
+    setCache(cacheKey, users);
+    return users;
+  } catch (error) {
+    console.error('Error fetching users from sheets:', error);
+    throw new Error('Failed to fetch users from Google Sheets');
+  }
+}
+
+/**
+ * Write a single user to Google Sheets
+ * Updates existing user or adds new user
+ */
+export async function syncUserToSheets(user: UserSheetData): Promise<void> {
+  try {
+    const sheets = await getSheets();
+    
+    // First get all users to find if user exists
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: USERS_SPREADSHEET_ID,
+      range: 'A1:G1000'
+    });
+
+    const rows = response.data.values || [];
+    let userRowIndex = -1;
+    
+    // Find existing user row
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i] && rows[i][0] === user.username) {
+        userRowIndex = i + 1; // +1 because sheets are 1-indexed
+        break;
+      }
+    }
+
+    const userData = [
+      user.username,
+      user.firstName,
+      user.lastName,
+      user.email,
+      user.role,
+      user.status,
+      user.active ? 'TRUE' : 'FALSE'
+    ];
+
+    if (userRowIndex > 0) {
+      // Update existing user
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: USERS_SPREADSHEET_ID,
+        range: `A${userRowIndex}:G${userRowIndex}`,
+        valueInputOption: 'RAW',
+        requestBody: {
+          values: [userData]
+        }
+      });
+    } else {
+      // Add new user - find first empty row
+      let nextRow = rows.length + 1;
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: USERS_SPREADSHEET_ID,
+        range: `A${nextRow}:G${nextRow}`,
+        valueInputOption: 'RAW',
+        requestBody: {
+          values: [userData]
+        }
+      });
+    }
+
+    // Clear cache
+    clearCache('users_sheet');
+  } catch (error) {
+    console.error('Error syncing user to sheets:', error);
+    throw new Error('Failed to sync user to Google Sheets');
+  }
+}
+
+/**
+ * Sync all users from database to Google Sheets
+ * This will overwrite the entire sheet with database data
+ */
+export async function syncUsersToSheets(users: UserSheetData[]): Promise<void> {
+  try {
+    const sheets = await getSheets();
+    
+    // Prepare data with header
+    const header = ['username', 'first_name', 'last_name', 'email', 'role', 'status', 'active'];
+    const data = [
+      header,
+      ...users.map(user => [
+        user.username,
+        user.firstName,
+        user.lastName,
+        user.email,
+        user.role,
+        user.status,
+        user.active ? 'TRUE' : 'FALSE'
+      ])
+    ];
+
+    // Clear existing data and write new data
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: USERS_SPREADSHEET_ID,
+      range: 'A:G'
+    });
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: USERS_SPREADSHEET_ID,
+      range: 'A1',
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: data
+      }
+    });
+
+    // Clear cache
+    clearCache('users_sheet');
+  } catch (error) {
+    console.error('Error syncing users to sheets:', error);
+    throw new Error('Failed to sync users to Google Sheets');
   }
 }

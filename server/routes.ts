@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { getGroups, getStudents, getAttendance, setAttendance, getInstructors, getInstructorGroups, getInstructorsForGroup, getAttendanceReport } from "./lib/sheets";
+import { getGroups, getStudents, getAttendance, setAttendance, getInstructors, getInstructorGroups, getInstructorsForGroup, getAttendanceReport, getUsersFromSheets, syncUserToSheets, syncUsersToSheets } from "./lib/sheets";
 import { attendanceRequestSchema, loginSchema, instructorsAuth, instructorGroupAssignments, registerInstructorSchema, updateUserStatusSchema, assignGroupSchema } from "@shared/schema";
 import { setupSession, requireAuth, optionalAuth, requireGroupAccess, hashPassword, verifyPassword, type AuthenticatedRequest } from "./auth";
 import { db } from "./db";
@@ -732,6 +732,277 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         message: "Błąd podczas zmiany hasła",
         code: "CHANGE_PASSWORD_ERROR"
+      });
+    }
+  });
+
+  // === USER SYNCHRONIZATION ROUTES ===
+
+  // Helper function to convert database user to sheet format
+  function convertUserToSheetFormat(user: any) {
+    return {
+      username: user.username,
+      firstName: user.firstName || user.first_name || '',
+      lastName: user.lastName || user.last_name || '',
+      email: user.email || '',
+      role: user.role || 'instructor',
+      status: user.status || 'active',
+      active: user.active !== false
+    };
+  }
+
+  // GET /api/users/sync/sheets - Get users from Google Sheets
+  app.get("/api/users/sync/sheets", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Only owners and reception can sync users
+      if (!req.user?.permissions?.canManageUsers) {
+        return res.status(403).json({
+          message: "Brak uprawnień do synchronizacji użytkowników",
+          code: "INSUFFICIENT_PERMISSIONS"
+        });
+      }
+
+      const sheetUsers = await getUsersFromSheets();
+      res.json({ users: sheetUsers });
+    } catch (error) {
+      console.error("Error fetching users from sheets:", error);
+      res.status(500).json({
+        message: "Błąd podczas pobierania użytkowników z arkusza",
+        code: "SHEETS_FETCH_ERROR"
+      });
+    }
+  });
+
+  // POST /api/users/sync/to-sheets - Export users from database to Google Sheets
+  app.post("/api/users/sync/to-sheets", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Only owners and reception can sync users
+      if (!req.user?.permissions?.canManageUsers) {
+        return res.status(403).json({
+          message: "Brak uprawnień do synchronizacji użytkowników",
+          code: "INSUFFICIENT_PERMISSIONS"
+        });
+      }
+
+      // Get all users from database
+      const dbUsers = await db.select().from(instructorsAuth);
+      
+      // Convert to sheet format (excluding passwords)
+      const sheetUsers = dbUsers.map(convertUserToSheetFormat);
+      
+      // Sync to sheets
+      await syncUsersToSheets(sheetUsers);
+      
+      res.json({
+        message: `Zsynchronizowano ${sheetUsers.length} użytkowników do arkusza`,
+        count: sheetUsers.length
+      });
+    } catch (error) {
+      console.error("Error syncing users to sheets:", error);
+      res.status(500).json({
+        message: "Błąd podczas synchronizacji użytkowników do arkusza",
+        code: "SHEETS_SYNC_ERROR"
+      });
+    }
+  });
+
+  // POST /api/users/sync/from-sheets - Import users from Google Sheets to database
+  app.post("/api/users/sync/from-sheets", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Only owners and reception can sync users
+      if (!req.user?.permissions?.canManageUsers) {
+        return res.status(403).json({
+          message: "Brak uprawnień do synchronizacji użytkowników",
+          code: "INSUFFICIENT_PERMISSIONS"
+        });
+      }
+
+      const sheetUsers = await getUsersFromSheets();
+      let imported = 0;
+      let updated = 0;
+      let errors = 0;
+
+      for (const sheetUser of sheetUsers) {
+        try {
+          // Check if user exists in database
+          const [existingUser] = await db
+            .select()
+            .from(instructorsAuth)
+            .where(eq(instructorsAuth.username, sheetUser.username));
+
+          if (existingUser) {
+            // Update existing user (except password)
+            await db
+              .update(instructorsAuth)
+              .set({
+                firstName: sheetUser.firstName,
+                lastName: sheetUser.lastName,
+                email: sheetUser.email,
+                role: sheetUser.role as any,
+                status: sheetUser.status as any,
+                active: sheetUser.active,
+                updatedAt: new Date()
+              })
+              .where(eq(instructorsAuth.username, sheetUser.username));
+            updated++;
+          } else {
+            // Create new user with default password (should be changed on first login)
+            const defaultPassword = await hashPassword('changeme123');
+            
+            await db.insert(instructorsAuth).values({
+              username: sheetUser.username,
+              password: defaultPassword,
+              firstName: sheetUser.firstName,
+              lastName: sheetUser.lastName,
+              email: sheetUser.email,
+              role: sheetUser.role as any,
+              status: sheetUser.status as any,
+              active: sheetUser.active,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            });
+            imported++;
+          }
+        } catch (userError) {
+          console.error(`Error processing user ${sheetUser.username}:`, userError);
+          errors++;
+        }
+      }
+
+      res.json({
+        message: `Synchronizacja zakończona: ${imported} nowych, ${updated} zaktualizowanych, ${errors} błędów`,
+        imported,
+        updated,
+        errors
+      });
+    } catch (error) {
+      console.error("Error importing users from sheets:", error);
+      res.status(500).json({
+        message: "Błąd podczas importu użytkowników z arkusza",
+        code: "SHEETS_IMPORT_ERROR"
+      });
+    }
+  });
+
+  // POST /api/users/sync/bidirectional - Full bidirectional sync
+  app.post("/api/users/sync/bidirectional", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Only owners and reception can sync users
+      if (!req.user?.permissions?.canManageUsers) {
+        return res.status(403).json({
+          message: "Brak uprawnień do synchronizacji użytkowników",
+          code: "INSUFFICIENT_PERMISSIONS"
+        });
+      }
+
+      // Get users from both sources
+      const [dbUsers, sheetUsers] = await Promise.all([
+        db.select().from(instructorsAuth),
+        getUsersFromSheets()
+      ]);
+
+      let dbImported = 0;
+      let dbUpdated = 0;
+      let sheetImported = 0;
+      let sheetUpdated = 0;
+      let errors = 0;
+
+      // Create maps for easier lookup
+      const dbUserMap = new Map(dbUsers.map(u => [u.username, u]));
+      const sheetUserMap = new Map(sheetUsers.map(u => [u.username, u]));
+
+      // Import from sheets to database
+      for (const sheetUser of sheetUsers) {
+        try {
+          const dbUser = dbUserMap.get(sheetUser.username);
+          
+          if (dbUser) {
+            // Update existing user in database
+            await db
+              .update(instructorsAuth)
+              .set({
+                firstName: sheetUser.firstName,
+                lastName: sheetUser.lastName,
+                email: sheetUser.email,
+                role: sheetUser.role as any,
+                status: sheetUser.status as any,
+                active: sheetUser.active,
+                updatedAt: new Date()
+              })
+              .where(eq(instructorsAuth.username, sheetUser.username));
+            dbUpdated++;
+          } else {
+            // Create new user in database
+            const defaultPassword = await hashPassword('changeme123');
+            
+            await db.insert(instructorsAuth).values({
+              username: sheetUser.username,
+              password: defaultPassword,
+              firstName: sheetUser.firstName,
+              lastName: sheetUser.lastName,
+              email: sheetUser.email,
+              role: sheetUser.role as any,
+              status: sheetUser.status as any,
+              active: sheetUser.active,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            });
+            dbImported++;
+          }
+        } catch (userError) {
+          console.error(`Error processing sheet user ${sheetUser.username}:`, userError);
+          errors++;
+        }
+      }
+
+      // Export new database users to sheets
+      for (const dbUser of dbUsers) {
+        try {
+          const sheetUser = sheetUserMap.get(dbUser.username);
+          
+          if (!sheetUser) {
+            // Add new user to sheets
+            await syncUserToSheets(convertUserToSheetFormat(dbUser));
+            sheetImported++;
+          } else {
+            // Check if sheet needs update (compare key fields)
+            const dbConverted = convertUserToSheetFormat(dbUser);
+            const needsUpdate = 
+              sheetUser.firstName !== dbConverted.firstName ||
+              sheetUser.lastName !== dbConverted.lastName ||
+              sheetUser.email !== dbConverted.email ||
+              sheetUser.role !== dbConverted.role ||
+              sheetUser.status !== dbConverted.status ||
+              sheetUser.active !== dbConverted.active;
+              
+            if (needsUpdate) {
+              await syncUserToSheets(dbConverted);
+              sheetUpdated++;
+            }
+          }
+        } catch (userError) {
+          console.error(`Error processing db user ${dbUser.username}:`, userError);
+          errors++;
+        }
+      }
+
+      res.json({
+        message: `Synchronizacja dwukierunkowa zakończona`,
+        database: {
+          imported: dbImported,
+          updated: dbUpdated
+        },
+        sheets: {
+          imported: sheetImported,
+          updated: sheetUpdated
+        },
+        errors
+      });
+    } catch (error) {
+      console.error("Error in bidirectional sync:", error);
+      res.status(500).json({
+        message: "Błąd podczas synchronizacji dwukierunkowej",
+        code: "BIDIRECTIONAL_SYNC_ERROR"
       });
     }
   });
