@@ -56,6 +56,7 @@ export function StudentDetailsModal({
     onSuccess: (_, variables) => {
       onNotesUpdate(variables.studentId, variables.notes);
       queryClient.invalidateQueries({ queryKey: ['/api/attendance'] });
+      onClose(); // Zamknij modal po udanym zapisaniu
     }
   });
 
