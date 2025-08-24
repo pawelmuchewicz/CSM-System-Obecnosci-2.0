@@ -308,6 +308,8 @@ export async function getStudents(groupId?: string, showInactive: boolean = fals
     if (groupId) {
       const config = GROUPS_CONFIG[groupId];
       const sheetGroupId = config?.sheetGroupId || groupId;
+      
+      
       filteredStudents = students.filter(s => s.group_id === sheetGroupId);
     }
 
