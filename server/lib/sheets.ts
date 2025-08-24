@@ -15,10 +15,11 @@ if (!process.env.GOOGLE_SHEETS_SPREADSHEET_ID) {
 // Configuration for groups and their spreadsheets
 // For now, we'll use the default spreadsheet with TTI group
 // Later this can be expanded to support multiple spreadsheets
-const GROUPS_CONFIG: Record<string, { name: string; spreadsheetId: string }> = {
+const GROUPS_CONFIG: Record<string, { name: string; spreadsheetId: string; sheetGroupId?: string }> = {
   'TTI': {
     name: 'TTI',
-    spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID!
+    spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID!,
+    sheetGroupId: 'G1' // Map TTI group to G1 in the sheet
   }
 };
 
@@ -195,7 +196,11 @@ export async function getStudents(groupId?: string): Promise<Student[]> {
     // Filter by group if specified
     let filteredStudents = students;
     if (groupId) {
-      filteredStudents = students.filter(s => s.group_id === groupId);
+      const config = GROUPS_CONFIG[groupId];
+      const sheetGroupId = config?.sheetGroupId || groupId;
+      filteredStudents = students.filter(s => s.group_id === sheetGroupId);
+      console.log(`Filtering students: looking for group_id '${sheetGroupId}' in sheet for app group '${groupId}'`);
+      console.log(`Found ${filteredStudents.length} students after filtering`);
     }
 
     // Sort by last_name then first_name using Polish locale
