@@ -1221,16 +1221,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Update user
+      const updateData: any = {
+        firstName,
+        lastName,
+        email,
+        role: role as any,
+        updatedAt: new Date()
+      };
+      
+      // Only update active/status if provided
+      if (active !== undefined) updateData.active = active;
+      if (req.body.status !== undefined) updateData.status = req.body.status;
+      
       await db
         .update(instructorsAuth)
-        .set({
-          firstName,
-          lastName,
-          email,
-          role: role as any,
-          active,
-          updatedAt: new Date()
-        })
+        .set(updateData)
         .where(eq(instructorsAuth.id, userId));
 
       res.json({

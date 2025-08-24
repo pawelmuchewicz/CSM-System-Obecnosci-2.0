@@ -15,7 +15,7 @@ export function Navbar() {
   // Role display mapping
   const getRoleDisplayName = (role: string) => {
     switch (role) {
-      case 'owner': return 'Właściciel';
+      case 'owner': return 'Nauczyciel';
       case 'reception': return 'Recepcja';
       case 'instructor': return 'Instruktor';
       default: return 'Użytkownik';
