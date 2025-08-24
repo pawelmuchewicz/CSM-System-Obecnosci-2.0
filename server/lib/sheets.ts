@@ -13,13 +13,71 @@ if (!process.env.GOOGLE_SHEETS_SPREADSHEET_ID) {
 }
 
 // Configuration for groups and their spreadsheets
-// For now, we'll use the default spreadsheet with TTI group
-// Later this can be expanded to support multiple spreadsheets
 const GROUPS_CONFIG: Record<string, { name: string; spreadsheetId: string; sheetGroupId?: string }> = {
   'TTI': {
     name: 'TTI',
-    spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID!,
-    sheetGroupId: 'G1' // Map TTI group to G1 in the sheet
+    spreadsheetId: '1Q-vUdf3pxIMvqvhzk_npNQZ1eXd4r6ElJUPy0n4tFNg',
+    sheetGroupId: 'G1'
+  },
+  'TTII': {
+    name: 'TTII',
+    spreadsheetId: '1oJWg3SORQeDNbLnSbjzkZ3mFx26r6mhwdt0lwu8v_JY',
+    sheetGroupId: 'G1'
+  },
+  'TTIII': {
+    name: 'TTIII',
+    spreadsheetId: '1eIeh_pdV90GY25tVbzYe15xjgpK0OsHqEkAzYFpHHTg',
+    sheetGroupId: 'G1'
+  },
+  'HipHop': {
+    name: 'HipHop',
+    spreadsheetId: '1LOzldQX10sqjG4WRmCDy0mZE6EDloWu4zOTR-j1ChfU',
+    sheetGroupId: 'G1'
+  },
+  'HipHop2': {
+    name: 'HipHop2',
+    spreadsheetId: '1Q3m_lWrha-7xSXS_Q9yh2j32ca4VstY_35KVV7Yol7o',
+    sheetGroupId: 'G1'
+  },
+  'TikTok': {
+    name: 'TikTok',
+    spreadsheetId: '1TrZW92kfw88psTOOffuwM2Qy8y7JYu7aYBCL5-3E_R4',
+    sheetGroupId: 'G1'
+  },
+  'Sp10': {
+    name: 'Sp10',
+    spreadsheetId: '1AmxiH2vOlxcTPqiw0qMppUgQX9oCssUdOpqTDhTPaWU',
+    sheetGroupId: 'G1'
+  },
+  'SpEkolog': {
+    name: 'SpEkolog',
+    spreadsheetId: '1NFSyuxroK0qWnMx6k8mZJP0DXqQa9f46ZgGVY5N65Eg',
+    sheetGroupId: 'G1'
+  },
+  'Sp8': {
+    name: 'Sp8',
+    spreadsheetId: '1cPlpeLcuhaMF_iwHfA-Rnm6Tl7E3zxhMkWv3nz7oe88',
+    sheetGroupId: 'G1'
+  },
+  'Sp1': {
+    name: 'Sp1',
+    spreadsheetId: '1l1p1YQP8CYf9eAGzRTHZW2j3Gpzdco2UBwHGGPCwIoM',
+    sheetGroupId: 'G1'
+  },
+  'Sp4': {
+    name: 'Sp4',
+    spreadsheetId: '1WBbKXuU8kxI1PS-bymSOUOtfX3l6vFMMcZKkEalB0i4',
+    sheetGroupId: 'G1'
+  },
+  'Sp6': {
+    name: 'Sp6',
+    spreadsheetId: '1MQ6BIt-1jWXfFbSkq0vf0DAWRs-5xvdVh1-z5ZK1E3s',
+    sheetGroupId: 'G1'
+  },
+  'Sp9': {
+    name: 'Sp9',
+    spreadsheetId: '1y_9Zkr8Q589YGQ9BpUDaZXFN3h_y7QiXLcCeL1aKJz8',
+    sheetGroupId: 'G1'
   }
 };
 
@@ -56,10 +114,7 @@ export async function getSheets() {
       throw new Error('Invalid private key format - missing END marker');
     }
     
-    console.log('Authenticating with service account:', serviceEmail);
-    console.log('Private key length:', privateKey.length);
-    console.log('Private key format check: BEGIN present:', privateKey.includes('-----BEGIN PRIVATE KEY-----'));
-    console.log('Private key format check: END present:', privateKey.includes('-----END PRIVATE KEY-----'));
+    // Authentication successful
     
     const auth = new google.auth.JWT({
       email: serviceEmail,
@@ -69,7 +124,6 @@ export async function getSheets() {
 
     // Test authentication
     await auth.authorize();
-    console.log('Authentication successful');
 
     return google.sheets({ version: 'v4', auth });
   } catch (error) {
@@ -124,26 +178,13 @@ export async function getStudents(groupId?: string): Promise<Student[]> {
     
     const sheets = await getSheets();
     const spreadsheetId = getSpreadsheetId(groupId);
-    console.log(`Fetching students for group ${groupId} from spreadsheet ${spreadsheetId}`);
-    
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: 'Students!A1:G2000'
     });
 
     const rows = response.data.values || [];
-    console.log(`Found ${rows.length} rows in Students sheet`);
-    
-    if (rows.length >= 1) {
-      console.log('Headers:', rows[0]);
-    }
-    if (rows.length >= 2) {
-      console.log('First data row:', rows[1]);
-      console.log('Sample of all rows:', rows.slice(0, 5));
-    }
-    
     if (rows.length < 2) {
-      console.log('No data rows found in Students sheet');
       return [];
     }
 
@@ -199,8 +240,6 @@ export async function getStudents(groupId?: string): Promise<Student[]> {
       const config = GROUPS_CONFIG[groupId];
       const sheetGroupId = config?.sheetGroupId || groupId;
       filteredStudents = students.filter(s => s.group_id === sheetGroupId);
-      console.log(`Filtering students: looking for group_id '${sheetGroupId}' in sheet for app group '${groupId}'`);
-      console.log(`Found ${filteredStudents.length} students after filtering`);
     }
 
     // Sort by last_name then first_name using Polish locale
