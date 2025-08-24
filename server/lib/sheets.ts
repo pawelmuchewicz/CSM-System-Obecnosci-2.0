@@ -178,13 +178,18 @@ export async function getStudents(groupId?: string): Promise<Student[]> {
     
     const sheets = await getSheets();
     const spreadsheetId = getSpreadsheetId(groupId);
+    console.log(`[DEBUG] Loading students for group: ${groupId}, spreadsheetId: ${spreadsheetId}`);
+    
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: 'Students!A1:H2000' // Include mail column
     });
 
     const rows = response.data.values || [];
+    console.log(`[DEBUG] Students sheet rows for ${groupId}: ${rows.length} rows`);
+    
     if (rows.length < 2) {
+      console.log(`[DEBUG] No data in Students sheet for ${groupId} - only ${rows.length} rows found`);
       return [];
     }
 
@@ -253,9 +258,10 @@ export async function getStudents(groupId?: string): Promise<Student[]> {
       return a.first_name.localeCompare(b.first_name, 'pl');
     });
 
+    console.log(`[DEBUG] Successfully loaded ${filteredStudents.length} students for group ${groupId}`);
     return filteredStudents;
   } catch (error) {
-    console.error('Error fetching students:', error);
+    console.error(`[ERROR] Failed to fetch students for group ${groupId}:`, error);
     throw new Error('Failed to fetch students from Google Sheets. Please ensure the sheet is shared with the service account as Editor.');
   }
 }
