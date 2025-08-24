@@ -65,7 +65,6 @@ export function AttendanceTable({
             <TableRow>
               <TableHead className="text-left">Imię</TableHead>
               <TableHead className="text-left">Nazwisko</TableHead>
-              <TableHead className="text-left">Grupa</TableHead>
               <TableHead className="text-center">Status</TableHead>
               <TableHead className="text-center">Akcje</TableHead>
             </TableRow>
@@ -79,23 +78,23 @@ export function AttendanceTable({
               return (
                 <TableRow 
                   key={student.id} 
-                  className="hover:bg-gray-50 transition-colors duration-150"
+                  className={`hover:bg-gray-50 transition-colors duration-150 ${
+                    isPresent ? 'bg-green-50' : ''
+                  }`}
                   data-testid={`row-student-${student.id}`}
                 >
                   <TableCell className="font-medium" data-testid={`text-firstname-${student.id}`}>
-                    {student.first_name}
+                    <div className="flex items-center">
+                      {isPresent && <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>}
+                      <span className={isPresent ? 'text-green-700 font-semibold' : ''}>
+                        {student.first_name}
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell data-testid={`text-lastname-${student.id}`}>
-                    {student.last_name}
-                  </TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant="secondary" 
-                      className="bg-blue-100 text-blue-800"
-                      data-testid={`badge-group-${student.id}`}
-                    >
-                      {student.group_id}
-                    </Badge>
+                    <span className={isPresent ? 'text-green-700 font-semibold' : ''}>
+                      {student.last_name}
+                    </span>
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="flex flex-col items-center space-y-2">
@@ -104,13 +103,17 @@ export function AttendanceTable({
                         onCheckedChange={(checked) => 
                           onAttendanceChange(student.id, checked ? 'obecny' : 'nieobecny')
                         }
-                        className="data-[state=checked]:bg-primary-600"
+                        className={`transition-colors duration-200 ${
+                          isPresent 
+                            ? 'data-[state=checked]:bg-green-600 bg-green-600' 
+                            : 'data-[state=unchecked]:bg-red-500 bg-red-500'
+                        }`}
                         data-testid={`switch-attendance-${student.id}`}
                         aria-label={`Oznacz ${student.first_name} ${student.last_name} jako ${isPresent ? 'nieobecną' : 'obecną'}`}
                       />
                       <span 
                         className={`text-xs font-medium ${
-                          isPresent ? 'text-primary-700' : 'text-gray-500'
+                          isPresent ? 'text-green-700' : 'text-red-600'
                         }`}
                         data-testid={`status-text-${student.id}`}
                       >
@@ -141,12 +144,12 @@ export function AttendanceTable({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
           <div className="flex items-center space-x-6 text-sm text-gray-600">
             <div className="flex items-center" data-testid="summary-present">
-              <div className="w-3 h-3 bg-primary-600 rounded-full mr-2"></div>
-              <span>Obecni: <span className="font-medium text-gray-900">{presentCount}</span></span>
+              <div className="w-3 h-3 bg-green-600 rounded-full mr-2"></div>
+              <span>Obecni: <span className="font-medium text-green-700">{presentCount}</span></span>
             </div>
             <div className="flex items-center" data-testid="summary-absent">
-              <div className="w-3 h-3 bg-gray-400 rounded-full mr-2"></div>
-              <span>Nieobecni: <span className="font-medium text-gray-900">{absentCount}</span></span>
+              <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+              <span>Nieobecni: <span className="font-medium text-red-600">{absentCount}</span></span>
             </div>
           </div>
           <div className="text-sm text-gray-500" data-testid="text-last-saved">

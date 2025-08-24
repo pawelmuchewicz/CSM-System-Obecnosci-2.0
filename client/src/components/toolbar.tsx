@@ -32,7 +32,7 @@ export function Toolbar({
   isSaving
 }: ToolbarProps) {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+    <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4 mb-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0 sm:space-x-4">
         <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
           {/* Group Selector */}
@@ -45,7 +45,7 @@ export function Toolbar({
               onValueChange={onGroupChange}
               data-testid="select-group"
             >
-              <SelectTrigger className="w-full sm:w-48" id="group-select">
+              <SelectTrigger className="w-full sm:w-48 shadow-sm border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" id="group-select">
                 <SelectValue placeholder="Wybierz grupę..." />
               </SelectTrigger>
               <SelectContent>
@@ -68,13 +68,13 @@ export function Toolbar({
               id="date-picker"
               value={selectedDate}
               onChange={(e) => onDateChange(e.target.value)}
-              className="w-full sm:w-48"
+              className="w-full sm:w-48 shadow-sm border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               data-testid="input-date"
             />
           </div>
 
           {/* Student Count */}
-          <div className="flex items-center text-sm text-gray-600 pt-6">
+          <div className="flex items-center text-sm text-gray-600 pt-6 bg-gray-50 px-3 py-2 rounded-md shadow-sm border border-gray-200">
             <Users className="w-4 h-4 mr-1" />
             <span data-testid="text-student-count">{studentCount}</span> uczniów
           </div>
