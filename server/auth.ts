@@ -113,6 +113,7 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
         role: instructorsAuth.role,
         status: instructorsAuth.status,
         active: instructorsAuth.active,
+        groupIds: instructorsAuth.groupIds,
       })
       .from(instructorsAuth)
       .where(eq(instructorsAuth.id, req.session.userId));
@@ -135,24 +136,12 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
       });
     }
 
-    // Get user's group assignments
-    const groupAssignments = await db
-      .select({
-        groupId: instructorGroupAssignments.groupId,
-        canManageStudents: instructorGroupAssignments.canManageStudents,
-        canViewReports: instructorGroupAssignments.canViewReports,
-      })
-      .from(instructorGroupAssignments)
-      .where(eq(instructorGroupAssignments.instructorId, user.id));
-
-    const groupIds = groupAssignments.map(g => g.groupId);
+    // Get user's group assignments from the groupIds column
+    const groupIds = user.groupIds || [];
     const userRole = (user.role || 'instructor') as UserRole;
     const permissions = getUserPermissions(userRole);
     
-    // Override permissions based on specific group assignments
-    if (groupAssignments.some(g => g.canManageStudents)) {
-      permissions.canManageStudents = true;
-    }
+    // For backward compatibility, keep the permissions as set by role
 
     // Update last login time
     await db

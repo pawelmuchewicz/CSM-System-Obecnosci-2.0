@@ -477,9 +477,8 @@ function AllUsersTab() {
 
   const handleOpenGroupsDialog = (user: User) => {
     setGroupsEditingUser(user);
-    // Get current user groups from sheets data or database
-    const sheetUser = sheetUsers?.users?.find(su => su.username === user.username);
-    const currentGroups = sheetUser?.groups || [];
+    // Get current user groups from database (groupIds)
+    const currentGroups = user.groupIds || [];
     setSelectedGroups(currentGroups);
     setIsGroupsDialogOpen(true);
   };
@@ -755,7 +754,7 @@ function AllUsersTab() {
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
-                    {(permissions.canAssignGroups && (user.role === 'instructor' || user.role === 'reception')) && (
+                    {(permissions.canAssignGroups && user.role === 'instructor') && (
                       <Button
                         size="sm"
                         variant="outline"
