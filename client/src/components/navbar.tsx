@@ -57,13 +57,6 @@ export function Navbar() {
           <div className="ml-auto flex items-center space-x-4">
             {user && (
               <>
-                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                  <User className="w-4 h-4" />
-                  <span>
-                    {user.firstName} {user.lastName}
-                    {user.isAdmin && <span className="ml-1 text-xs bg-primary text-primary-foreground px-1 rounded">Admin</span>}
-                  </span>
-                </div>
                 <Button
                   variant="outline"
                   size="sm"
@@ -72,7 +65,8 @@ export function Navbar() {
                   data-testid="button-logout"
                 >
                   <LogOut className="w-4 h-4 mr-2" />
-                  {logoutMutation.isPending ? 'Wylogowywanie...' : 'Wyloguj'}
+                  {logoutMutation.isPending ? 'Wylogowywanie...' : `Wyloguj ${user.firstName} ${user.lastName}`}
+                  {user.isAdmin && <span className="ml-1 text-xs bg-primary text-primary-foreground px-1 rounded">Admin</span>}
                 </Button>
               </>
             )}

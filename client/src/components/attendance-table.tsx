@@ -144,8 +144,23 @@ export function AttendanceTable({
                         <Badge variant="secondary" className="bg-gray-200 text-gray-600 font-medium">
                           WYPISANY
                         </Badge>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={studentAttendance?.status === 'obecny'}
+                            onCheckedChange={(checked) => 
+                              onAttendanceChange(student.id, checked ? 'obecny' : 'nieobecny')
+                            }
+                            className={`transition-colors duration-200 opacity-75 ${
+                              studentAttendance?.status === 'obecny' 
+                                ? 'data-[state=checked]:bg-green-600 bg-green-600' 
+                                : 'data-[state=unchecked]:bg-red-500 bg-red-500'
+                            }`}
+                            data-testid={`switch-inactive-attendance-${student.id}`}
+                            aria-label={`Oznacz ${student.first_name} ${student.last_name} jako ${studentAttendance?.status === 'obecny' ? 'nieobecną' : 'obecną'}`}
+                          />
+                        </div>
                         <span className="text-xs text-gray-500" data-testid={`status-text-${student.id}`}>
-                          Nieaktywny
+                          {studentAttendance?.status === 'obecny' ? 'Był(a) obecny/a' : 'Był(a) nieobecny/a'}
                         </span>
                       </div>
                     ) : (

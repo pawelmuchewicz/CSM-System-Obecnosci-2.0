@@ -8,9 +8,11 @@ import { AttendanceTable } from "@/components/attendance-table";
 import { fetchGroups, fetchStudents, fetchAttendance, saveAttendance, invalidateAttendanceQueries } from "@/lib/api";
 import type { AttendanceItem } from "@shared/schema";
 import { ConfirmationModal } from "@/components/confirmation-modal";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AttendancePage() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [selectedGroup, setSelectedGroup] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
@@ -217,8 +219,10 @@ export default function AttendancePage() {
                 <Users className="text-primary text-2xl" />
               </div>
               <div className="ml-3">
-                <h1 className="text-xl font-semibold text-gray-900">Attendance</h1>
-                <p className="text-sm text-gray-500">System Frekwencji</p>
+                <h1 className="text-xl font-semibold text-gray-900">Creative Dance</h1>
+                <p className="text-sm text-gray-500">
+                  {user ? `${user.firstName} ${user.lastName}` : 'Ładowanie...'}
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
