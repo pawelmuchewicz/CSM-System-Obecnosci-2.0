@@ -219,6 +219,7 @@ export default function AttendancePage() {
             onAttendanceChange={handleAttendanceChange}
             selectedDate={selectedDate}
             selectedGroup={selectedGroup}
+            selectedGroupName={groupsData?.groups.find(g => g.id === selectedGroup)?.name || selectedGroup}
             onNotesUpdate={(studentId, notes) => {
               const currentItem = attendance.get(studentId);
               if (currentItem) {

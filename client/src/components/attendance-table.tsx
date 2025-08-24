@@ -13,6 +13,7 @@ interface AttendanceTableProps {
   onAttendanceChange: (studentId: string, status: 'obecny' | 'nieobecny') => void;
   selectedDate: string;
   selectedGroup: string;
+  selectedGroupName: string;
   onNotesUpdate: (studentId: string, notes: string) => void;
 }
 
@@ -22,6 +23,7 @@ export function AttendanceTable({
   onAttendanceChange,
   selectedDate,
   selectedGroup,
+  selectedGroupName,
   onNotesUpdate
 }: AttendanceTableProps) {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -182,6 +184,7 @@ export function AttendanceTable({
         onClose={handleCloseModal}
         selectedDate={selectedDate}
         groupId={selectedGroup}
+        groupName={selectedGroupName}
         currentAttendance={selectedStudent ? attendance.get(selectedStudent.id) : undefined}
         onNotesUpdate={onNotesUpdate}
       />

@@ -20,6 +20,7 @@ interface StudentDetailsModalProps {
   onClose: () => void;
   selectedDate: string;
   groupId: string;
+  groupName: string;
   currentAttendance?: AttendanceItem;
   onNotesUpdate: (studentId: string, notes: string) => void;
 }
@@ -30,6 +31,7 @@ export function StudentDetailsModal({
   onClose,
   selectedDate,
   groupId,
+  groupName,
   currentAttendance,
   onNotesUpdate
 }: StudentDetailsModalProps) {
@@ -72,7 +74,7 @@ export function StudentDetailsModal({
   const handleSendEmail = () => {
     const email = `${student.first_name.toLowerCase()}.${student.last_name.toLowerCase()}@example.com`;
     const subject = `Wiadomość dotycząca ucznia ${student.first_name} ${student.last_name}`;
-    const body = `Dzień dobry,\n\nPiszę w sprawie ucznia ${student.first_name} ${student.last_name} z grupy ${student.group_id}.\n\nPozdrawiam`;
+    const body = `Dzień dobry,\n\nPiszę w sprawie ucznia ${student.first_name} ${student.last_name} z grupy ${groupName}.\n\nPozdrawiam`;
     
     window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_self');
   };
@@ -110,7 +112,7 @@ export function StudentDetailsModal({
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-gray-600">Grupa:</span>
-                <div className="font-medium">{student.group_id}</div>
+                <div className="font-medium">{groupName}</div>
               </div>
               {student.class && (
                 <div>
