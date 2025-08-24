@@ -30,10 +30,17 @@ export default function AttendancePage() {
     queryFn: fetchGroups,
   });
 
-  // Fetch students for selected group
+  // Fetch students for selected group (displayed)
   const { data: studentsData, isLoading: studentsLoading } = useQuery({
     queryKey: ['/api/students', selectedGroup, showInactive],
     queryFn: () => fetchStudents(selectedGroup, showInactive),
+    enabled: !!selectedGroup,
+  });
+
+  // Fetch ALL students for statistics (including inactive)
+  const { data: allStudentsData } = useQuery({
+    queryKey: ['/api/students', selectedGroup, true], // zawsze pobieraj wszystkich
+    queryFn: () => fetchStudents(selectedGroup, true),
     enabled: !!selectedGroup,
   });
 
@@ -199,6 +206,7 @@ export default function AttendancePage() {
 
   const groups = groupsData?.groups || [];
   const students = studentsData?.students || [];
+  const allStudents = allStudentsData?.students || [];
   const isLoading = groupsLoading || studentsLoading || attendanceLoading;
   
   // Check if all active students are present
@@ -278,6 +286,7 @@ export default function AttendancePage() {
         {!isLoading && (
           <AttendanceTable
             students={students}
+            allStudents={allStudents}
             attendance={attendance}
             onAttendanceChange={handleAttendanceChange}
             selectedDate={selectedDate}

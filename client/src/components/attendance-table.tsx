@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 interface AttendanceTableProps {
   students: Student[];
+  allStudents: Student[];
   attendance: Map<string, AttendanceItem>;
   onAttendanceChange: (studentId: string, status: 'obecny' | 'nieobecny' | 'wypisani') => void;
   selectedDate: string;
@@ -22,6 +23,7 @@ interface AttendanceTableProps {
 
 export function AttendanceTable({
   students,
+  allStudents,
   attendance,
   onAttendanceChange,
   selectedDate,
@@ -42,13 +44,13 @@ export function AttendanceTable({
     setIsModalOpen(false);
     setSelectedStudent(null);
   };
-  // Liczenie wszystkich kategorii
+  // Liczenie wszystkich kategorii - używaj allStudents dla statystyk
   const activeStudents = students.filter(s => s.active);
-  const inactiveStudents = students.filter(s => !s.active);
+  const allInactiveStudents = (allStudents || []).filter(s => !s.active);
   const attendanceValues = Array.from(attendance.values());
   const presentCount = attendanceValues.filter(a => a.status === 'obecny').length;
   const absentCount = attendanceValues.filter(a => a.status === 'nieobecny').length;
-  const expelledCount = inactiveStudents.length; // Wypisani to nieaktywni uczniowie
+  const expelledCount = allInactiveStudents.length; // Wypisani to nieaktywni uczniowie ze wszystkich
 
   if (students.length === 0) {
     return (
