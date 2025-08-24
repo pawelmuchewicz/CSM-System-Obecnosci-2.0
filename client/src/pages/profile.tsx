@@ -138,6 +138,10 @@ export default function ProfilePage() {
                     <Badge variant="secondary" className="text-sm">
                       {getRoleDisplayName(user.role)}
                     </Badge>
+                    {/* DEBUG */}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Debug: role="{user.role}", canManageUsers={user.permissions?.canManageUsers}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -153,7 +157,11 @@ export default function ProfilePage() {
               <div>
                 <Label className="text-base font-medium">Przypisane grupy</Label>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {user.groupIds?.length > 0 ? (
+                  {user.permissions?.canViewAllGroups ? (
+                    <Badge variant="default" className="bg-green-100 text-green-800">
+                      Wszystkie grupy (pełne uprawnienia)
+                    </Badge>
+                  ) : user.groupIds?.length > 0 ? (
                     user.groupIds.map((groupId) => (
                       <Badge key={groupId} variant="outline">
                         {groupId}
