@@ -8,6 +8,7 @@ import { MoreVertical } from "lucide-react";
 import type { Student, AttendanceItem } from "@shared/schema";
 import { StudentDetailsModal } from './student-details-modal';
 import { InstructorsSection } from './instructors-section';
+import { useAuth } from "@/hooks/useAuth";
 
 interface AttendanceTableProps {
   students: Student[];
@@ -30,6 +31,7 @@ export function AttendanceTable({
 }: AttendanceTableProps) {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { user } = useAuth();
 
   const handleStudentClick = (student: Student) => {
     setSelectedStudent(student);
@@ -148,52 +150,43 @@ export function AttendanceTable({
                       </div>
                     ) : (
                       <div className="flex flex-col items-center space-y-2">
-                        <div className="flex gap-1">
-                          <Button
-                            size="sm"
-                            variant={studentAttendance?.status === 'obecny' ? 'default' : 'outline'}
-                            className={`px-2 py-1 text-xs ${
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={studentAttendance?.status === 'obecny'}
+                            onCheckedChange={(checked) => 
+                              onAttendanceChange(student.id, checked ? 'obecny' : 'nieobecny')
+                            }
+                            className={`transition-colors duration-200 ${
                               studentAttendance?.status === 'obecny' 
-                                ? 'bg-green-600 hover:bg-green-700 text-white' 
-                                : 'hover:bg-green-50 hover:text-green-700 hover:border-green-300'
+                                ? 'data-[state=checked]:bg-green-600 bg-green-600' 
+                                : 'data-[state=unchecked]:bg-red-500 bg-red-500'
                             }`}
-                            onClick={() => onAttendanceChange(student.id, 'obecny')}
-                            data-testid={`button-present-${student.id}`}
-                          >
-                            ✓
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={studentAttendance?.status === 'nieobecny' ? 'default' : 'outline'}
-                            className={`px-2 py-1 text-xs ${
-                              studentAttendance?.status === 'nieobecny' 
-                                ? 'bg-red-500 hover:bg-red-600 text-white' 
-                                : 'hover:bg-red-50 hover:text-red-700 hover:border-red-300'
-                            }`}
-                            onClick={() => onAttendanceChange(student.id, 'nieobecny')}
-                            data-testid={`button-absent-${student.id}`}
-                          >
-                            ✗
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={studentAttendance?.status === 'wypisani' ? 'default' : 'outline'}
-                            className={`px-2 py-1 text-xs ${
-                              studentAttendance?.status === 'wypisani' 
-                                ? 'bg-gray-500 hover:bg-gray-600 text-white' 
-                                : 'hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300'
-                            }`}
-                            onClick={() => onAttendanceChange(student.id, 'wypisani')}
-                            data-testid={`button-expelled-${student.id}`}
-                          >
-                            ⊘
-                          </Button>
+                            data-testid={`switch-attendance-${student.id}`}
+                            aria-label={`Oznacz ${student.first_name} ${student.last_name} jako ${studentAttendance?.status === 'obecny' ? 'nieobecną' : 'obecną'}`}
+                          />
+                          {user?.isAdmin && (
+                            <Button
+                              size="sm"
+                              variant={studentAttendance?.status === 'wypisani' ? 'default' : 'outline'}
+                              className={`px-2 py-1 text-xs ml-1 ${
+                                studentAttendance?.status === 'wypisani' 
+                                  ? 'bg-gray-500 hover:bg-gray-600 text-white' 
+                                  : 'hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300'
+                              }`}
+                              onClick={() => onAttendanceChange(student.id, 'wypisani')}
+                              data-testid={`button-expelled-${student.id}`}
+                              title="Wypisz ucznia (tylko administratorzy)"
+                            >
+                              ⊘
+                            </Button>
+                          )}
                         </div>
                         <span 
                           className={`text-xs font-medium ${
                             studentAttendance?.status === 'obecny' ? 'text-green-700' : 
                             studentAttendance?.status === 'nieobecny' ? 'text-red-600' :
-                            'text-gray-600'
+                            studentAttendance?.status === 'wypisani' ? 'text-gray-600' :
+                            'text-red-600'
                           }`}
                           data-testid={`status-text-${student.id}`}
                         >
