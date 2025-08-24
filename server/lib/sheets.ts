@@ -123,13 +123,26 @@ export async function getStudents(groupId?: string): Promise<Student[]> {
     
     const sheets = await getSheets();
     const spreadsheetId = getSpreadsheetId(groupId);
+    console.log(`Fetching students for group ${groupId} from spreadsheet ${spreadsheetId}`);
+    
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: 'Students!A1:G2000'
     });
 
     const rows = response.data.values || [];
+    console.log(`Found ${rows.length} rows in Students sheet`);
+    
+    if (rows.length >= 1) {
+      console.log('Headers:', rows[0]);
+    }
+    if (rows.length >= 2) {
+      console.log('First data row:', rows[1]);
+      console.log('Sample of all rows:', rows.slice(0, 5));
+    }
+    
     if (rows.length < 2) {
+      console.log('No data rows found in Students sheet');
       return [];
     }
 
