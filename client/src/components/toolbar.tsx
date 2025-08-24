@@ -116,7 +116,7 @@ export function Toolbar({
             variant="outline"
             onClick={onToggleAllAttendance}
             disabled={!selectedGroup || studentCount === 0}
-            className="w-full sm:w-auto text-sm"
+            className="w-full sm:w-auto text-sm border-2 border-blue-500 text-blue-700 hover:bg-blue-50 hover:border-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-white"
             data-testid="button-toggle-all"
           >
             <CheckCheck className="w-4 h-4 mr-1 sm:mr-2 flex-shrink-0" />
