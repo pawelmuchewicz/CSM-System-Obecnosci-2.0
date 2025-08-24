@@ -33,16 +33,51 @@ function getSpreadsheetId(groupId: string): string {
 
 // Helper function to get authenticated sheets client
 export async function getSheets() {
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n');
-  
-  const auth = new google.auth.JWT(
-    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    undefined,
-    privateKey,
-    ['https://www.googleapis.com/auth/spreadsheets']
-  );
+  try {
+    const serviceEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    const privateKeyRaw = process.env.GOOGLE_PRIVATE_KEY;
+    
+    if (!serviceEmail || !privateKeyRaw) {
+      throw new Error('Missing Google service account credentials');
+    }
+    
+    // More robust private key processing
+    let privateKey = privateKeyRaw
+      .replace(/\\n/g, '\n')  // Replace escaped newlines
+      .replace(/\r\n/g, '\n') // Replace Windows line endings
+      .replace(/\r/g, '\n');  // Replace old Mac line endings
+    
+    // Ensure proper PEM format
+    if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+      throw new Error('Invalid private key format - missing BEGIN marker');
+    }
+    if (!privateKey.includes('-----END PRIVATE KEY-----')) {
+      throw new Error('Invalid private key format - missing END marker');
+    }
+    
+    console.log('Authenticating with service account:', serviceEmail);
+    console.log('Private key length:', privateKey.length);
+    console.log('Private key format check: BEGIN present:', privateKey.includes('-----BEGIN PRIVATE KEY-----'));
+    console.log('Private key format check: END present:', privateKey.includes('-----END PRIVATE KEY-----'));
+    
+    const auth = new google.auth.JWT({
+      email: serviceEmail,
+      key: privateKey,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets']
+    });
 
-  return google.sheets({ version: 'v4', auth });
+    // Test authentication
+    await auth.authorize();
+    console.log('Authentication successful');
+
+    return google.sheets({ version: 'v4', auth });
+  } catch (error) {
+    console.error('Authentication failed:', error);
+    if (error instanceof Error && error.message.includes('DECODER')) {
+      throw new Error('Private key format is corrupted. Please ensure the key is properly copied with all line breaks intact.');
+    }
+    throw new Error('Failed to authenticate with Google Sheets API. Please check your service account credentials.');
+  }
 }
 
 // Helper function to normalize text
