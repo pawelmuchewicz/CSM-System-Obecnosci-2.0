@@ -44,6 +44,15 @@ export default function AttendancePage() {
     enabled: !!selectedGroup,
   });
 
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'owner': return 'Właściciel';
+      case 'reception': return 'Recepcja';
+      case 'instructor': return 'Instruktor';
+      default: return 'Użytkownik';
+    }
+  };
+
   // Fetch attendance for selected group and date
   const { data: attendanceData, isLoading: attendanceLoading } = useQuery({
     queryKey: ['/api/attendance', selectedGroup, selectedDate],
@@ -235,7 +244,7 @@ export default function AttendancePage() {
             </div>
             <div className="flex items-center space-x-3">
               <div className="text-sm text-gray-500">
-                <span>Właściciel</span>
+                <span>{user ? getRoleDisplayName(user.role) : 'Ładowanie...'}</span>
               </div>
               <div className="h-8 w-8 bg-primary-100 rounded-full flex items-center justify-center">
                 <Users className="text-primary text-sm" />

@@ -9,6 +9,7 @@ import {
   boolean,
   serial,
   integer,
+  text,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 
@@ -152,6 +153,7 @@ export const instructorsAuth = pgTable("instructors_auth", {
   role: varchar("role", { length: 20 }).default("instructor"), // "owner", "reception", "instructor"
   status: varchar("status", { length: 20 }).default("pending"), // "pending", "active", "inactive"
   active: boolean("active").default(true), // Kept for backward compatibility
+  groupIds: text("group_ids").array().default([]).notNull(), // Array of group IDs this user can access
   approvedBy: integer("approved_by"),
   approvedAt: timestamp("approved_at"),
   lastLoginAt: timestamp("last_login_at"),

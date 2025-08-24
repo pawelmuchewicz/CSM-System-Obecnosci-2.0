@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import type { Group } from "@shared/schema";
 
 interface PendingUser {
   id: number;
@@ -265,6 +266,9 @@ function AllUsersTab() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [groupsEditingUser, setGroupsEditingUser] = useState<User | null>(null);
+  const [isGroupsDialogOpen, setIsGroupsDialogOpen] = useState(false);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [newUser, setNewUser] = useState({
     username: '',
     firstName: '',
@@ -280,6 +284,11 @@ function AllUsersTab() {
 
   const { data: sheetUsers } = useQuery<{users: SheetUser[]}>({
     queryKey: ['/api/users/sync/sheets'],
+    retry: false,
+  });
+
+  const { data: groupsData } = useQuery<{groups: Group[]}>({
+    queryKey: ['/api/groups'],
     retry: false,
   });
 
@@ -320,6 +329,30 @@ function AllUsersTab() {
       toast({
         title: "Błąd",
         description: "Nie udało się zmienić statusu użytkownika",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateUserGroupsMutation = useMutation({
+    mutationFn: async ({ userId, groupIds }: { userId: number; groupIds: string[] }) => {
+      await apiRequest('PUT', `/api/admin/users/${userId}/groups`, { groupIds });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Sukces",
+        description: "Grupy użytkownika zostały zaktualizowane",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users/sync/sheets'] });
+      setIsGroupsDialogOpen(false);
+      setGroupsEditingUser(null);
+      setSelectedGroups([]);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Błąd",
+        description: error.message || "Nie udało się zaktualizować grup użytkownika",
         variant: "destructive",
       });
     },
@@ -440,6 +473,32 @@ function AllUsersTab() {
       return;
     }
     updateUserMutation.mutate(editingUser);
+  };
+
+  const handleOpenGroupsDialog = (user: User) => {
+    setGroupsEditingUser(user);
+    // Get current user groups from sheets data or database
+    const sheetUser = sheetUsers?.users?.find(su => su.username === user.username);
+    const currentGroups = sheetUser?.groups || [];
+    setSelectedGroups(currentGroups);
+    setIsGroupsDialogOpen(true);
+  };
+
+  const handleSaveGroups = () => {
+    if (!groupsEditingUser) return;
+    
+    updateUserGroupsMutation.mutate({
+      userId: groupsEditingUser.id,
+      groupIds: selectedGroups
+    });
+  };
+
+  const toggleGroupSelection = (groupId: string) => {
+    setSelectedGroups(prev => 
+      prev.includes(groupId) 
+        ? prev.filter(id => id !== groupId)
+        : [...prev, groupId]
+    );
   };
 
   const getRoleDisplayName = (role: string) => {
@@ -696,6 +755,17 @@ function AllUsersTab() {
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
+                    {(permissions.canAssignGroups && (user.role === 'instructor' || user.role === 'reception')) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenGroupsDialog(user)}
+                        data-testid={`button-edit-groups-${user.id}`}
+                        title="Edytuj grupy"
+                      >
+                        <Users className="w-4 h-4" />
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant={user.active ? "destructive" : "default"}
@@ -811,6 +881,69 @@ function AllUsersTab() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Groups Management Dialog */}
+      <Dialog open={isGroupsDialogOpen} onOpenChange={(open) => {
+        setIsGroupsDialogOpen(open);
+        if (!open) {
+          setGroupsEditingUser(null);
+          setSelectedGroups([]);
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Zarządzaj grupami - {groupsEditingUser?.firstName} {groupsEditingUser?.lastName}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium mb-3 block">
+                Wybierz grupy dostępne dla użytkownika:
+              </Label>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {groupsData?.groups?.map((group) => (
+                  <div key={group.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={`group-${group.id}`}
+                      checked={selectedGroups.includes(group.id)}
+                      onChange={() => toggleGroupSelection(group.id)}
+                      className="rounded border-gray-300"
+                      data-testid={`checkbox-group-${group.id}`}
+                    />
+                    <Label htmlFor={`group-${group.id}`} className="flex-1 cursor-pointer">
+                      {group.name}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="text-sm text-muted-foreground">
+              Wybrane grupy: {selectedGroups.length > 0 ? selectedGroups.join(', ') : 'Brak'}
+            </div>
+            
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setIsGroupsDialogOpen(false)}
+                data-testid="button-cancel-groups"
+              >
+                Anuluj
+              </Button>
+              <Button
+                onClick={handleSaveGroups}
+                disabled={updateUserGroupsMutation.isPending}
+                data-testid="button-save-groups"
+              >
+                {updateUserGroupsMutation.isPending ? 'Zapisywanie...' : 'Zapisz'}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

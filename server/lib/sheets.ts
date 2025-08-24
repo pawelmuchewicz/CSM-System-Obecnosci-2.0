@@ -1000,6 +1000,7 @@ interface UserSheetData {
   role: string;
   status: string;
   active: boolean;
+  groups?: string; // Comma-separated group IDs
 }
 
 /**
@@ -1078,7 +1079,7 @@ export async function getUsersFromSheets(): Promise<UserSheetData[]> {
     const sheets = await getSheets();
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: USERS_SPREADSHEET_ID,
-      range: 'A1:G1000'
+      range: 'A1:H1000' // Extended to include groups column
     });
 
     const rows = response.data.values || [];
@@ -1097,7 +1098,8 @@ export async function getUsersFromSheets(): Promise<UserSheetData[]> {
           email: row[3] || '',
           role: normalizeRole(rawRole),
           status: normalizeUserStatus(rawStatus),
-          active: row[6] === 'TRUE' || row[6] === 'true' || row[6] === '1'
+          active: row[6] === 'TRUE' || row[6] === 'true' || row[6] === '1',
+          groups: row[7] || '' // Groups column
         });
       }
     }
@@ -1121,7 +1123,7 @@ export async function syncUserToSheets(user: UserSheetData): Promise<void> {
     // First get all users to find if user exists
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: USERS_SPREADSHEET_ID,
-      range: 'A1:G1000'
+      range: 'A1:H1000' // Extended to include groups column
     });
 
     const rows = response.data.values || [];
@@ -1142,14 +1144,15 @@ export async function syncUserToSheets(user: UserSheetData): Promise<void> {
       user.email,
       roleToPolish(user.role),
       statusToPolish(user.status),
-      user.active ? 'TRUE' : 'FALSE'
+      user.active ? 'TRUE' : 'FALSE',
+      user.groups || '' // Groups column
     ];
 
     if (userRowIndex > 0) {
       // Update existing user
       await sheets.spreadsheets.values.update({
         spreadsheetId: USERS_SPREADSHEET_ID,
-        range: `A${userRowIndex}:G${userRowIndex}`,
+        range: `A${userRowIndex}:H${userRowIndex}`,
         valueInputOption: 'RAW',
         requestBody: {
           values: [userData]
@@ -1160,7 +1163,7 @@ export async function syncUserToSheets(user: UserSheetData): Promise<void> {
       let nextRow = rows.length + 1;
       await sheets.spreadsheets.values.update({
         spreadsheetId: USERS_SPREADSHEET_ID,
-        range: `A${nextRow}:G${nextRow}`,
+        range: `A${nextRow}:H${nextRow}`,
         valueInputOption: 'RAW',
         requestBody: {
           values: [userData]
@@ -1186,7 +1189,7 @@ export async function removeUserFromSheets(username: string): Promise<void> {
     // First get all users to find the row to delete
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: USERS_SPREADSHEET_ID,
-      range: 'A1:G1000'
+      range: 'A1:H1000' // Extended to include groups column
     });
 
     const rows = response.data.values || [];

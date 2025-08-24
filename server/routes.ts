@@ -970,7 +970,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       email: user.email || '',
       role: user.role || 'instructor',
       status: user.status || 'active',
-      active: user.active !== false
+      active: user.active !== false,
+      groups: user.groupIds ? user.groupIds.join(',') : '' // Convert array to comma-separated string
     };
   }
 
@@ -1308,6 +1309,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         message: "Błąd podczas aktualizacji użytkownika",
         code: "USER_UPDATE_ERROR"
+      });
+    }
+  });
+
+  // PUT /api/admin/users/:id/groups - Update user's assigned groups
+  app.put("/api/admin/users/:id/groups", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Only owners and reception can assign groups
+      if (!req.user?.permissions?.canAssignGroups) {
+        return res.status(403).json({
+          message: "Brak uprawnień do przypisywania grup",
+          code: "INSUFFICIENT_PERMISSIONS"
+        });
+      }
+
+      const userId = parseInt(req.params.id);
+      const { groupIds } = req.body;
+
+      if (!userId) {
+        return res.status(400).json({
+          message: "Nieprawidłowe ID użytkownika",
+          code: "INVALID_USER_ID"
+        });
+      }
+
+      if (!Array.isArray(groupIds)) {
+        return res.status(400).json({
+          message: "grupIds musi być tablicą",
+          code: "INVALID_GROUP_IDS"
+        });
+      }
+
+      // Update user's groups
+      const [updatedUser] = await db
+        .update(instructorsAuth)
+        .set({
+          groupIds,
+          updatedAt: new Date()
+        })
+        .where(eq(instructorsAuth.id, userId))
+        .returning();
+
+      if (!updatedUser) {
+        return res.status(404).json({
+          message: "Użytkownik nie został znaleziony",
+          code: "USER_NOT_FOUND"
+        });
+      }
+
+      // Sync to Google Sheets
+      try {
+        await syncUserToSheets({
+          username: updatedUser.username,
+          firstName: updatedUser.firstName || '',
+          lastName: updatedUser.lastName || '',
+          email: updatedUser.email || '',
+          role: updatedUser.role || 'instructor',
+          status: updatedUser.status || 'active',
+          active: updatedUser.active !== false,
+          groups: groupIds.join(',')
+        });
+      } catch (syncError) {
+        console.error('Failed to sync updated user groups to sheets:', syncError);
+        // Don't fail the request if sheet sync fails
+      }
+
+      res.json({
+        message: "Grupy użytkownika zostały zaktualizowane",
+        user: {
+          id: updatedUser.id,
+          username: updatedUser.username,
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName,
+          groupIds: updatedUser.groupIds
+        }
+      });
+    } catch (error) {
+      console.error("Error updating user groups:", error);
+      res.status(500).json({
+        message: "Błąd podczas aktualizacji grup użytkownika",
+        code: "UPDATE_GROUPS_ERROR"
       });
     }
   });
