@@ -3,10 +3,15 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserCheck, UserX, Settings } from "lucide-react";
+import { Users, UserCheck, UserX, Settings, Plus, RefreshCw, Download, Upload, AlertCircle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface PendingUser {
   id: number;
@@ -18,6 +23,29 @@ interface PendingUser {
   role: string;
   status: string;
   createdAt: string;
+}
+
+interface User {
+  id: number;
+  username: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  role: string;
+  status: string;
+  active: boolean;
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
+interface SheetUser {
+  username: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  status: string;
+  active: boolean;
 }
 
 export default function AdminPage() {
@@ -157,17 +185,7 @@ export default function AdminPage() {
         </TabsContent>
 
         <TabsContent value="all-users">
-          <Card>
-            <CardHeader>
-              <CardTitle>Wszyscy użytkownicy</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <Users className="mx-auto w-12 h-12 mb-4" />
-                <p>Lista wszystkich użytkowników - funkcja w przygotowaniu</p>
-              </div>
-            </CardContent>
-          </Card>
+          <AllUsersTab />
         </TabsContent>
 
         <TabsContent value="settings">
@@ -206,6 +224,369 @@ export default function AdminPage() {
           </Card>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// Component for managing all users
+function AllUsersTab() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [newUser, setNewUser] = useState({
+    username: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    role: 'instructor'
+  });
+
+  const { data: allUsers, isLoading } = useQuery<{users: User[]}>({
+    queryKey: ['/api/admin/users'],
+    retry: false,
+  });
+
+  const { data: sheetUsers } = useQuery<{users: SheetUser[]}>({
+    queryKey: ['/api/users/sync/sheets'],
+    retry: false,
+  });
+
+  const createUserMutation = useMutation({
+    mutationFn: async (userData: any) => {
+      await apiRequest('POST', '/api/admin/create-user', userData);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Sukces",
+        description: "Użytkownik został utworzony",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      setIsAddDialogOpen(false);
+      setNewUser({ username: '', firstName: '', lastName: '', email: '', role: 'instructor' });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Błąd",
+        description: error.message || "Nie udało się utworzyć użytkownika",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleUserStatusMutation = useMutation({
+    mutationFn: async ({ userId, active }: { userId: number; active: boolean }) => {
+      await apiRequest('PATCH', `/api/admin/users/${userId}`, { active });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Sukces",
+        description: "Status użytkownika został zmieniony",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    },
+    onError: () => {
+      toast({
+        title: "Błąd",
+        description: "Nie udało się zmienić statusu użytkownika",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const syncToSheetsMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('POST', '/api/users/sync/to-sheets', {});
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Sukces",
+        description: `Zsynchronizowano ${data.count} użytkowników do arkusza`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/users/sync/sheets'] });
+    },
+    onError: () => {
+      toast({
+        title: "Błąd",
+        description: "Nie udało się zsynchronizować użytkowników do arkusza",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const syncFromSheetsMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('POST', '/api/users/sync/from-sheets', {});
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Sukces",
+        description: `Importowano ${data.imported} nowych i zaktualizowano ${data.updated} użytkowników`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    },
+    onError: () => {
+      toast({
+        title: "Błąd",
+        description: "Nie udało się zaimportować użytkowników z arkusza",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bidirectionalSyncMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('POST', '/api/users/sync/bidirectional', {});
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Sukces",
+        description: "Synchronizacja dwukierunkowa zakończona pomyślnie",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users/sync/sheets'] });
+    },
+    onError: () => {
+      toast({
+        title: "Błąd",
+        description: "Nie udało się wykonać synchronizacji dwukierunkowej",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCreateUser = () => {
+    if (!newUser.username || !newUser.firstName || !newUser.lastName) {
+      toast({
+        title: "Błąd",
+        description: "Wypełnij wszystkie wymagane pola",
+        variant: "destructive",
+      });
+      return;
+    }
+    createUserMutation.mutate(newUser);
+  };
+
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'owner': return 'Właściciel';
+      case 'reception': return 'Recepcja';
+      case 'instructor': return 'Instruktor';
+      default: return role;
+    }
+  };
+
+  const getStatusColor = (status: string, active: boolean) => {
+    if (!active) return 'destructive';
+    switch (status) {
+      case 'active': return 'default';
+      case 'pending': return 'secondary';
+      case 'inactive': return 'destructive';
+      default: return 'secondary';
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Sync Controls */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Synchronizacja z Google Sheets</span>
+            <div className="flex space-x-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => syncToSheetsMutation.mutate()}
+                disabled={syncToSheetsMutation.isPending}
+                data-testid="button-sync-to-sheets"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Do arkusza
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => syncFromSheetsMutation.mutate()}
+                disabled={syncFromSheetsMutation.isPending}
+                data-testid="button-sync-from-sheets"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Z arkusza
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => bidirectionalSyncMutation.mutate()}
+                disabled={bidirectionalSyncMutation.isPending}
+                data-testid="button-sync-bidirectional"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Dwukierunkowa
+              </Button>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h4 className="font-medium mb-2">Użytkownicy w bazie danych</h4>
+              <p className="text-sm text-muted-foreground">
+                {allUsers?.users?.length || 0} użytkowników
+              </p>
+            </div>
+            <div>
+              <h4 className="font-medium mb-2">Użytkownicy w arkuszu</h4>
+              <p className="text-sm text-muted-foreground">
+                {sheetUsers?.users?.length || 0} użytkowników
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Users List */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Wszyscy użytkownicy</span>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-add-user">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Dodaj użytkownika
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Dodaj nowego użytkownika</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="firstName">Imię *</Label>
+                      <Input
+                        id="firstName"
+                        value={newUser.firstName}
+                        onChange={(e) => setNewUser(prev => ({ ...prev, firstName: e.target.value }))}
+                        data-testid="input-first-name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="lastName">Nazwisko *</Label>
+                      <Input
+                        id="lastName"
+                        value={newUser.lastName}
+                        onChange={(e) => setNewUser(prev => ({ ...prev, lastName: e.target.value }))}
+                        data-testid="input-last-name"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="username">Nazwa użytkownika *</Label>
+                    <Input
+                      id="username"
+                      value={newUser.username}
+                      onChange={(e) => setNewUser(prev => ({ ...prev, username: e.target.value }))}
+                      data-testid="input-username"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={newUser.email}
+                      onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
+                      data-testid="input-email"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="role">Rola</Label>
+                    <Select value={newUser.role} onValueChange={(value) => setNewUser(prev => ({ ...prev, role: value }))}>
+                      <SelectTrigger data-testid="select-role">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="instructor">Instruktor</SelectItem>
+                        <SelectItem value="reception">Recepcja</SelectItem>
+                        <SelectItem value="owner">Właściciel</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex justify-end space-x-2">
+                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                      Anuluj
+                    </Button>
+                    <Button 
+                      onClick={handleCreateUser}
+                      disabled={createUserMutation.isPending}
+                      data-testid="button-create-user"
+                    >
+                      {createUserMutation.isPending ? 'Tworzenie...' : 'Utwórz'}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : allUsers?.users?.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="mx-auto w-12 h-12 mb-4" />
+              <p>Brak użytkowników w systemie</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {allUsers?.users?.map((user) => (
+                <div key={user.id} className="border rounded-lg p-4 flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-2">
+                      <h3 className="font-medium">{user.firstName} {user.lastName}</h3>
+                      <Badge variant="outline">@{user.username}</Badge>
+                      <Badge variant={getStatusColor(user.status, user.active)}>
+                        {getRoleDisplayName(user.role)}
+                      </Badge>
+                      {!user.active && (
+                        <Badge variant="destructive">
+                          <AlertCircle className="w-3 h-3 mr-1" />
+                          Nieaktywny
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {user.email || 'Brak email'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Utworzony: {new Date(user.createdAt).toLocaleDateString('pl-PL')}
+                      {user.lastLoginAt && ` • Ostatnie logowanie: ${new Date(user.lastLoginAt).toLocaleDateString('pl-PL')}`}
+                    </p>
+                  </div>
+                  
+                  <div className="flex space-x-2">
+                    <Button
+                      size="sm"
+                      variant={user.active ? "destructive" : "default"}
+                      onClick={() => toggleUserStatusMutation.mutate({ userId: user.id, active: !user.active })}
+                      disabled={toggleUserStatusMutation.isPending}
+                      data-testid={`button-toggle-status-${user.id}`}
+                    >
+                      {user.active ? 'Dezaktywuj' : 'Aktywuj'}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

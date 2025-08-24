@@ -736,6 +736,185 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // === USER MANAGEMENT ROUTES ===
+
+  // GET /api/admin/users - Get all users
+  app.get("/api/admin/users", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Only owners and reception can view all users
+      if (!req.user?.permissions?.canManageUsers) {
+        return res.status(403).json({
+          message: "Brak uprawnień do zarządzania użytkownikami",
+          code: "INSUFFICIENT_PERMISSIONS"
+        });
+      }
+
+      const users = await db.select().from(instructorsAuth).orderBy(instructorsAuth.createdAt);
+      res.json({ users });
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({
+        message: "Błąd podczas pobierania użytkowników",
+        code: "FETCH_USERS_ERROR"
+      });
+    }
+  });
+
+  // POST /api/admin/create-user - Create new user
+  app.post("/api/admin/create-user", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Only owners and reception can create users
+      if (!req.user?.permissions?.canManageUsers) {
+        return res.status(403).json({
+          message: "Brak uprawnień do tworzenia użytkowników",
+          code: "INSUFFICIENT_PERMISSIONS"
+        });
+      }
+
+      const { username, firstName, lastName, email, role } = req.body;
+
+      if (!username || !firstName || !lastName) {
+        return res.status(400).json({
+          message: "Wymagane pola: username, firstName, lastName",
+          code: "MISSING_REQUIRED_FIELDS"
+        });
+      }
+
+      // Check if username already exists
+      const [existingUser] = await db
+        .select()
+        .from(instructorsAuth)
+        .where(eq(instructorsAuth.username, username));
+
+      if (existingUser) {
+        return res.status(400).json({
+          message: "Użytkownik o tej nazwie już istnieje",
+          code: "USERNAME_EXISTS"
+        });
+      }
+
+      // Create user with default password
+      const defaultPassword = await hashPassword('changeme123');
+      
+      const [newUser] = await db.insert(instructorsAuth).values({
+        username,
+        password: defaultPassword,
+        firstName,
+        lastName,
+        email: email || null,
+        role: role || 'instructor',
+        status: 'active',
+        active: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }).returning();
+
+      // Sync to Google Sheets
+      try {
+        await syncUserToSheets({
+          username: newUser.username,
+          firstName: newUser.firstName || '',
+          lastName: newUser.lastName || '',
+          email: newUser.email || '',
+          role: newUser.role || 'instructor',
+          status: newUser.status || 'active',
+          active: newUser.active !== false
+        });
+      } catch (syncError) {
+        console.error('Failed to sync new user to sheets:', syncError);
+        // Don't fail the request if sheet sync fails
+      }
+
+      res.json({
+        message: "Użytkownik został utworzony",
+        user: {
+          id: newUser.id,
+          username: newUser.username,
+          firstName: newUser.firstName,
+          lastName: newUser.lastName,
+          email: newUser.email,
+          role: newUser.role,
+          status: newUser.status,
+          active: newUser.active
+        }
+      });
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({
+        message: "Błąd podczas tworzenia użytkownika",
+        code: "CREATE_USER_ERROR"
+      });
+    }
+  });
+
+  // PATCH /api/admin/users/:id - Update user status
+  app.patch("/api/admin/users/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Only owners and reception can update users
+      if (!req.user?.permissions?.canManageUsers) {
+        return res.status(403).json({
+          message: "Brak uprawnień do aktualizacji użytkowników",
+          code: "INSUFFICIENT_PERMISSIONS"
+        });
+      }
+
+      const userId = parseInt(req.params.id);
+      const { active } = req.body;
+
+      if (typeof active !== 'boolean') {
+        return res.status(400).json({
+          message: "Pole 'active' musi być typu boolean",
+          code: "INVALID_ACTIVE_VALUE"
+        });
+      }
+
+      // Update user
+      const [updatedUser] = await db
+        .update(instructorsAuth)
+        .set({
+          active,
+          status: active ? 'active' : 'inactive',
+          updatedAt: new Date()
+        })
+        .where(eq(instructorsAuth.id, userId))
+        .returning();
+
+      if (!updatedUser) {
+        return res.status(404).json({
+          message: "Użytkownik nie został znaleziony",
+          code: "USER_NOT_FOUND"
+        });
+      }
+
+      // Sync to Google Sheets
+      try {
+        await syncUserToSheets({
+          username: updatedUser.username,
+          firstName: updatedUser.firstName || '',
+          lastName: updatedUser.lastName || '',
+          email: updatedUser.email || '',
+          role: updatedUser.role || 'instructor',
+          status: updatedUser.status || 'active',
+          active: updatedUser.active !== false
+        });
+      } catch (syncError) {
+        console.error('Failed to sync updated user to sheets:', syncError);
+        // Don't fail the request if sheet sync fails
+      }
+
+      res.json({
+        message: "Status użytkownika został zaktualizowany",
+        user: updatedUser
+      });
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({
+        message: "Błąd podczas aktualizacji użytkownika",
+        code: "UPDATE_USER_ERROR"
+      });
+    }
+  });
+
   // === USER SYNCHRONIZATION ROUTES ===
 
   // Helper function to convert database user to sheet format
