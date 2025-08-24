@@ -25,8 +25,12 @@ export function Navbar() {
           <div className="flex items-center space-x-2">
             <Calendar className="w-6 h-6 text-primary" />
             <div className="flex flex-col">
-              <span className="text-xl font-bold">System Obecności CSM</span>
-              <span className="text-xs text-muted-foreground">CreativeDance</span>
+              <span className="text-xl font-bold">System Frekwencji</span>
+              {user && (
+                <span className="text-xs text-muted-foreground">
+                  {user.firstName} {user.lastName}
+                </span>
+              )}
             </div>
           </div>
           

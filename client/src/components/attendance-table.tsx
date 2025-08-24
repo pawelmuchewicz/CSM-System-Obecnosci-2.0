@@ -146,33 +146,60 @@ export function AttendanceTable({
                       </div>
                     ) : (
                       <div className="flex flex-col items-center space-y-2">
-                        <Select
-                          value={studentAttendance?.status || 'nieobecny'}
-                          onValueChange={(value: 'obecny' | 'nieobecny' | 'wypisani') => 
-                            onAttendanceChange(student.id, value)
-                          }
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="obecny">Obecny/a</SelectItem>
-                            <SelectItem value="nieobecny">Nieobecny/a</SelectItem>
-                            <SelectItem value="wypisani">Wypisani</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Badge 
-                          variant={
-                            studentAttendance?.status === 'obecny' ? 'default' : 
-                            studentAttendance?.status === 'nieobecny' ? 'destructive' : 
-                            'secondary'
-                          }
-                          data-testid={`status-badge-${student.id}`}
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant={studentAttendance?.status === 'obecny' ? 'default' : 'outline'}
+                            className={`px-2 py-1 text-xs ${
+                              studentAttendance?.status === 'obecny' 
+                                ? 'bg-green-600 hover:bg-green-700 text-white' 
+                                : 'hover:bg-green-50 hover:text-green-700 hover:border-green-300'
+                            }`}
+                            onClick={() => onAttendanceChange(student.id, 'obecny')}
+                            data-testid={`button-present-${student.id}`}
+                          >
+                            ✓
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={studentAttendance?.status === 'nieobecny' ? 'default' : 'outline'}
+                            className={`px-2 py-1 text-xs ${
+                              studentAttendance?.status === 'nieobecny' 
+                                ? 'bg-red-500 hover:bg-red-600 text-white' 
+                                : 'hover:bg-red-50 hover:text-red-700 hover:border-red-300'
+                            }`}
+                            onClick={() => onAttendanceChange(student.id, 'nieobecny')}
+                            data-testid={`button-absent-${student.id}`}
+                          >
+                            ✗
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={studentAttendance?.status === 'wypisani' ? 'default' : 'outline'}
+                            className={`px-2 py-1 text-xs ${
+                              studentAttendance?.status === 'wypisani' 
+                                ? 'bg-gray-500 hover:bg-gray-600 text-white' 
+                                : 'hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300'
+                            }`}
+                            onClick={() => onAttendanceChange(student.id, 'wypisani')}
+                            data-testid={`button-expelled-${student.id}`}
+                          >
+                            ⊘
+                          </Button>
+                        </div>
+                        <span 
+                          className={`text-xs font-medium ${
+                            studentAttendance?.status === 'obecny' ? 'text-green-700' : 
+                            studentAttendance?.status === 'nieobecny' ? 'text-red-600' :
+                            'text-gray-600'
+                          }`}
+                          data-testid={`status-text-${student.id}`}
                         >
                           {studentAttendance?.status === 'obecny' ? 'Obecny/a' : 
                            studentAttendance?.status === 'nieobecny' ? 'Nieobecny/a' : 
-                           'Wypisani'}
-                        </Badge>
+                           studentAttendance?.status === 'wypisani' ? 'Wypisani' :
+                           'Nieobecny/a'}
+                        </span>
                       </div>
                     )}
                   </TableCell>
