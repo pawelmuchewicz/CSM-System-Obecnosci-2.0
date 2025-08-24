@@ -251,8 +251,39 @@ export async function getStudents(groupId?: string, showInactive: boolean = fals
       filteredStudents = students.filter(s => s.group_id === sheetGroupId);
     }
 
-    // Sort by last_name then first_name using Polish locale
+    // Helper function for natural class sorting (0A, 0B, 1A, 1C, 2B, 3A)
+    const parseClass = (className: string) => {
+      if (!className) return { year: 999, section: 'Z' };
+      const match = className.match(/^(\d+)([A-Z])$/);
+      if (!match) return { year: 999, section: className };
+      return {
+        year: parseInt(match[1], 10),
+        section: match[2]
+      };
+    };
+
+    // Check if current group is a school group (needs class sorting)
+    const isSchoolGroup = groupId && groupId.startsWith('Sp');
+
+    // Sort students based on group type
     filteredStudents.sort((a, b) => {
+      if (isSchoolGroup && a.class && b.class) {
+        // For school groups: sort by class first, then name
+        const classA = parseClass(a.class);
+        const classB = parseClass(b.class);
+        
+        // Compare year first
+        if (classA.year !== classB.year) {
+          return classA.year - classB.year;
+        }
+        
+        // If same year, compare section
+        if (classA.section !== classB.section) {
+          return classA.section.localeCompare(classB.section, 'pl');
+        }
+      }
+      
+      // Within same class or for non-school groups: sort by last_name then first_name
       const lastNameCompare = a.last_name.localeCompare(b.last_name, 'pl');
       if (lastNameCompare !== 0) return lastNameCompare;
       return a.first_name.localeCompare(b.first_name, 'pl');
