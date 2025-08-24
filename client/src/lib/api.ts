@@ -1,5 +1,5 @@
 import { queryClient } from "./queryClient";
-import type { Group, Student, AttendanceResponse, AttendanceRequest, AttendanceUpdateResponse, Instructor, InstructorGroup } from "@shared/schema";
+import type { Group, Student, AttendanceResponse, AttendanceRequest, AttendanceUpdateResponse, Instructor, InstructorGroup, AttendanceReportFilters, AttendanceReportResponse } from "@shared/schema";
 
 const API_BASE = "/api";
 
@@ -85,4 +85,53 @@ export async function fetchInstructorsForGroup(groupId: string): Promise<{ instr
     throw new Error(`Failed to fetch instructors for group: ${response.statusText}`);
   }
   return response.json();
+}
+
+// Reports API functions
+export async function fetchAttendanceReport(filters: AttendanceReportFilters): Promise<AttendanceReportResponse> {
+  const params = new URLSearchParams();
+  
+  if (filters.groupIds?.length) {
+    params.append('groupIds', filters.groupIds.join(','));
+  }
+  if (filters.studentIds?.length) {
+    params.append('studentIds', filters.studentIds.join(','));
+  }
+  if (filters.dateFrom) {
+    params.append('dateFrom', filters.dateFrom);
+  }
+  if (filters.dateTo) {
+    params.append('dateTo', filters.dateTo);
+  }
+  if (filters.status && filters.status !== 'all') {
+    params.append('status', filters.status);
+  }
+
+  const response = await fetch(`${API_BASE}/reports/attendance?${params.toString()}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch attendance report: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export function getExportUrl(type: 'csv' | 'pdf', filters: AttendanceReportFilters): string {
+  const params = new URLSearchParams();
+  
+  if (filters.groupIds?.length) {
+    params.append('groupIds', filters.groupIds.join(','));
+  }
+  if (filters.studentIds?.length) {
+    params.append('studentIds', filters.studentIds.join(','));
+  }
+  if (filters.dateFrom) {
+    params.append('dateFrom', filters.dateFrom);
+  }
+  if (filters.dateTo) {
+    params.append('dateTo', filters.dateTo);
+  }
+  if (filters.status && filters.status !== 'all') {
+    params.append('status', filters.status);
+  }
+
+  return `${API_BASE}/export/${type}?${params.toString()}`;
 }

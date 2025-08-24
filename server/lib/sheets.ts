@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import type { Group, Student, AttendanceItem, Instructor, InstructorGroup } from '@shared/schema';
+import type { Group, Student, AttendanceItem, Instructor, InstructorGroup, AttendanceReportFilters, AttendanceReportResponse, AttendanceReportItem, StudentStats, GroupStats, AttendanceStats } from '@shared/schema';
 
 // Validate required environment variables
 if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
@@ -761,5 +761,152 @@ export async function getInstructorsForGroup(groupId: string): Promise<(Instruct
   } catch (error) {
     console.error('Error fetching instructors for group:', error);
     throw new Error('Failed to fetch instructors for group');
+  }
+}
+
+// Report functions
+export async function getAttendanceReport(filters: AttendanceReportFilters): Promise<AttendanceReportResponse> {
+  try {
+    const groups = await getGroups();
+    const filteredGroups = filters.groupIds ? 
+      groups.filter(g => filters.groupIds!.includes(g.id)) : 
+      groups;
+
+    const allItems: AttendanceReportItem[] = [];
+    const studentStatsMap = new Map<string, StudentStats>();
+    const groupStatsMap = new Map<string, GroupStats>();
+
+    // Process each group
+    for (const group of filteredGroups) {
+      const students = await getStudents(group.id, true);
+      const filteredStudents = filters.studentIds ? 
+        students.filter(s => filters.studentIds!.includes(s.id)) : 
+        students;
+
+      // Get all sessions for this group within date range
+      const sessions = await getGroupSessions(group.id, filters.dateFrom, filters.dateTo);
+      
+      for (const session of sessions) {
+        const attendance = await getAttendance(group.id, session.date);
+        
+        for (const student of filteredStudents) {
+          const attendanceItem = attendance.items.find(item => item.student_id === student.id);
+          const status = attendanceItem?.status || 'nieobecny';
+          
+          // Apply status filter
+          if (filters.status && filters.status !== 'all' && status !== filters.status) {
+            continue;
+          }
+
+          const reportItem: AttendanceReportItem = {
+            student_id: student.id,
+            student_name: `${student.first_name} ${student.last_name}`,
+            group_id: group.id,
+            group_name: group.name,
+            date: session.date,
+            status,
+            notes: attendanceItem?.notes
+          };
+
+          allItems.push(reportItem);
+
+          // Update student stats
+          const studentKey = `${student.id}-${group.id}`;
+          if (!studentStatsMap.has(studentKey)) {
+            studentStatsMap.set(studentKey, {
+              student_id: student.id,
+              student_name: `${student.first_name} ${student.last_name}`,
+              group_id: group.id,
+              totalSessions: 0,
+              presentSessions: 0,
+              absentSessions: 0,
+              attendancePercentage: 0
+            });
+          }
+
+          const studentStats = studentStatsMap.get(studentKey)!;
+          studentStats.totalSessions++;
+          if (status === 'obecny') {
+            studentStats.presentSessions++;
+          } else {
+            studentStats.absentSessions++;
+          }
+          studentStats.attendancePercentage = Math.round((studentStats.presentSessions / studentStats.totalSessions) * 100);
+        }
+      }
+
+      // Calculate group stats
+      const groupStudents = filteredStudents;
+      if (groupStudents.length > 0) {
+        const groupKey = group.id;
+        const totalGroupSessions = sessions.length * groupStudents.length;
+        const presentGroupSessions = allItems.filter(item => 
+          item.group_id === group.id && item.status === 'obecny'
+        ).length;
+
+        groupStatsMap.set(groupKey, {
+          group_id: group.id,
+          group_name: group.name,
+          studentCount: groupStudents.length,
+          totalSessions: totalGroupSessions,
+          presentSessions: presentGroupSessions,
+          absentSessions: totalGroupSessions - presentGroupSessions,
+          attendancePercentage: totalGroupSessions > 0 ? Math.round((presentGroupSessions / totalGroupSessions) * 100) : 0
+        });
+      }
+    }
+
+    // Calculate total stats
+    const totalStats: AttendanceStats = {
+      totalSessions: allItems.length,
+      presentSessions: allItems.filter(item => item.status === 'obecny').length,
+      absentSessions: allItems.filter(item => item.status === 'nieobecny').length,
+      attendancePercentage: 0
+    };
+    totalStats.attendancePercentage = totalStats.totalSessions > 0 ? 
+      Math.round((totalStats.presentSessions / totalStats.totalSessions) * 100) : 0;
+
+    return {
+      items: allItems,
+      studentStats: Array.from(studentStatsMap.values()),
+      groupStats: Array.from(groupStatsMap.values()),
+      totalStats
+    };
+  } catch (error) {
+    console.error('Error generating attendance report:', error);
+    throw new Error('Failed to generate attendance report');
+  }
+}
+
+async function getGroupSessions(groupId: string, dateFrom?: string, dateTo?: string): Promise<{date: string}[]> {
+  try {
+    const sheets = await getSheets();
+    const spreadsheetId = getSpreadsheetId(groupId);
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'Sessions!A1:C1000'
+    });
+
+    const rows = response.data.values || [];
+    const sessions: {date: string}[] = [];
+    
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (row && row[1] === groupId && row[2]) {
+        const date = row[2];
+        
+        // Apply date filters
+        if (dateFrom && date < dateFrom) continue;
+        if (dateTo && date > dateTo) continue;
+        
+        sessions.push({ date });
+      }
+    }
+
+    return sessions.sort((a, b) => a.date.localeCompare(b.date));
+  } catch (error) {
+    console.error(`Error fetching sessions for group ${groupId}:`, error);
+    return [];
   }
 }

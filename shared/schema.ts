@@ -69,3 +69,48 @@ export const attendanceRequestSchema = z.object({
     notes: z.string().optional()
   }))
 });
+
+// Report types
+export interface AttendanceReportFilters {
+  groupIds?: string[];
+  studentIds?: string[];
+  dateFrom?: string;
+  dateTo?: string;
+  status?: 'obecny' | 'nieobecny' | 'all';
+}
+
+export interface AttendanceReportItem {
+  student_id: string;
+  student_name: string;
+  group_id: string;
+  group_name: string;
+  date: string;
+  status: 'obecny' | 'nieobecny';
+  notes?: string;
+}
+
+export interface AttendanceStats {
+  totalSessions: number;
+  presentSessions: number;
+  absentSessions: number;
+  attendancePercentage: number;
+}
+
+export interface StudentStats extends AttendanceStats {
+  student_id: string;
+  student_name: string;
+  group_id: string;
+}
+
+export interface GroupStats extends AttendanceStats {
+  group_id: string;
+  group_name: string;
+  studentCount: number;
+}
+
+export interface AttendanceReportResponse {
+  items: AttendanceReportItem[];
+  studentStats: StudentStats[];
+  groupStats: GroupStats[];
+  totalStats: AttendanceStats;
+}
