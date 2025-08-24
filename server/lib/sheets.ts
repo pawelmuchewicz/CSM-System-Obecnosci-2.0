@@ -17,67 +17,67 @@ const GROUPS_CONFIG: Record<string, { name: string; spreadsheetId: string; sheet
   'TTI': {
     name: 'TTI',
     spreadsheetId: '1Q-vUdf3pxIMvqvhzk_npNQZ1eXd4r6ElJUPy0n4tFNg',
-    sheetGroupId: 'G1'
+    sheetGroupId: 'TTI'
   },
   'TTII': {
     name: 'TTII',
     spreadsheetId: '1oJWg3SORQeDNbLnSbjzkZ3mFx26r6mhwdt0lwu8v_JY',
-    sheetGroupId: 'G1'
+    sheetGroupId: 'TTII'
   },
   'TTIII': {
     name: 'TTIII',
     spreadsheetId: '1eIeh_pdV90GY25tVbzYe15xjgpK0OsHqEkAzYFpHHTg',
-    sheetGroupId: 'G1'
+    sheetGroupId: 'TTIII'
   },
   'HipHop': {
     name: 'HipHop',
     spreadsheetId: '1LOzldQX10sqjG4WRmCDy0mZE6EDloWu4zOTR-j1ChfU',
-    sheetGroupId: 'G1'
+    sheetGroupId: 'HipHop'
   },
   'HipHop2': {
     name: 'HipHop2',
     spreadsheetId: '1Q3m_lWrha-7xSXS_Q9yh2j32ca4VstY_35KVV7Yol7o',
-    sheetGroupId: 'G1'
+    sheetGroupId: 'HipHop2'
   },
   'TikTok': {
     name: 'TikTok',
     spreadsheetId: '1TrZW92kfw88psTOOffuwM2Qy8y7JYu7aYBCL5-3E_R4',
-    sheetGroupId: 'G1'
+    sheetGroupId: 'TikTok'
   },
   'Sp10': {
     name: 'Sp10',
     spreadsheetId: '1AmxiH2vOlxcTPqiw0qMppUgQX9oCssUdOpqTDhTPaWU',
-    sheetGroupId: 'G1'
+    sheetGroupId: 'Sp10'
   },
   'SpEkolog': {
     name: 'SpEkolog',
     spreadsheetId: '1NFSyuxroK0qWnMx6k8mZJP0DXqQa9f46ZgGVY5N65Eg',
-    sheetGroupId: 'G1'
+    sheetGroupId: 'SpEkolog'
   },
   'Sp8': {
     name: 'Sp8',
     spreadsheetId: '1cPlpeLcuhaMF_iwHfA-Rnm6Tl7E3zxhMkWv3nz7oe88',
-    sheetGroupId: 'G1'
+    sheetGroupId: 'Sp8'
   },
   'Sp1': {
     name: 'Sp1',
     spreadsheetId: '1l1p1YQP8CYf9eAGzRTHZW2j3Gpzdco2UBwHGGPCwIoM',
-    sheetGroupId: 'G1'
+    sheetGroupId: 'Sp1'
   },
   'Sp4': {
     name: 'Sp4',
     spreadsheetId: '1WBbKXuU8kxI1PS-bymSOUOtfX3l6vFMMcZKkEalB0i4',
-    sheetGroupId: 'G1'
+    sheetGroupId: 'Sp4'
   },
   'Sp6': {
     name: 'Sp6',
     spreadsheetId: '1MQ6BIt-1jWXfFbSkq0vf0DAWRs-5xvdVh1-z5ZK1E3s',
-    sheetGroupId: 'G1'
+    sheetGroupId: 'Sp6'
   },
   'Sp9': {
     name: 'Sp9',
     spreadsheetId: '1y_9Zkr8Q589YGQ9BpUDaZXFN3h_y7QiXLcCeL1aKJz8',
-    sheetGroupId: 'G1'
+    sheetGroupId: 'Sp9'
   }
 };
 
@@ -178,7 +178,6 @@ export async function getStudents(groupId?: string): Promise<Student[]> {
     
     const sheets = await getSheets();
     const spreadsheetId = getSpreadsheetId(groupId);
-    console.log(`[DEBUG] Loading students for group: ${groupId}, spreadsheetId: ${spreadsheetId}`);
     
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -186,10 +185,8 @@ export async function getStudents(groupId?: string): Promise<Student[]> {
     });
 
     const rows = response.data.values || [];
-    console.log(`[DEBUG] Students sheet rows for ${groupId}: ${rows.length} rows`);
     
     if (rows.length < 2) {
-      console.log(`[DEBUG] No data in Students sheet for ${groupId} - only ${rows.length} rows found`);
       return [];
     }
 
@@ -237,34 +234,18 @@ export async function getStudents(groupId?: string): Promise<Student[]> {
         }
       });
 
-      // Debug log before validation
-      if (i <= 3) { // Log first 3 students for debugging
-        console.log(`[DEBUG] Student ${i} for group ${groupId}:`, {
-          id: student.id,
-          first_name: student.first_name,
-          last_name: student.last_name,
-          group_id: student.group_id,
-          active: student.active,
-          original_active: row[headers.indexOf('active')]
-        });
-      }
-
       // Validate required fields
       if (student.id && student.first_name && student.last_name && student.group_id && student.active) {
         students.push(student as Student);
       }
     }
 
-    console.log(`[DEBUG] After validation for group ${groupId}: ${students.length} students passed`);
-
     // Filter by group if specified
     let filteredStudents = students;
     if (groupId) {
       const config = GROUPS_CONFIG[groupId];
       const sheetGroupId = config?.sheetGroupId || groupId;
-      console.log(`[DEBUG] Filtering ${groupId}: looking for group_id=${sheetGroupId}`);
       filteredStudents = students.filter(s => s.group_id === sheetGroupId);
-      console.log(`[DEBUG] After group filtering for ${groupId}: ${filteredStudents.length} students`);
     }
 
     // Sort by last_name then first_name using Polish locale
@@ -274,10 +255,9 @@ export async function getStudents(groupId?: string): Promise<Student[]> {
       return a.first_name.localeCompare(b.first_name, 'pl');
     });
 
-    console.log(`[DEBUG] Successfully loaded ${filteredStudents.length} students for group ${groupId}`);
     return filteredStudents;
   } catch (error) {
-    console.error(`[ERROR] Failed to fetch students for group ${groupId}:`, error);
+    console.error(`Failed to fetch students for group ${groupId}:`, error);
     throw new Error('Failed to fetch students from Google Sheets. Please ensure the sheet is shared with the service account as Editor.');
   }
 }
