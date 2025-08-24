@@ -138,10 +138,6 @@ export default function ProfilePage() {
                     <Badge variant="secondary" className="text-sm">
                       {getRoleDisplayName(user.role)}
                     </Badge>
-                    {/* DEBUG */}
-                    <p className="text-xs text-gray-500 mt-1">
-                      Debug: role="{user.role}", canManageUsers={user.permissions?.canManageUsers}
-                    </p>
                   </div>
                 </div>
               </div>
