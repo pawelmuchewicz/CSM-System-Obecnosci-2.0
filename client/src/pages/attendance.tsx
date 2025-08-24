@@ -116,7 +116,8 @@ export default function AttendancePage() {
     newAttendance.set(studentId, {
       student_id: studentId,
       status,
-      updated_at: currentItem?.updated_at // Keep the current timestamp for conflict detection
+      updated_at: currentItem?.updated_at, // Keep the current timestamp for conflict detection
+      notes: '' // Clear notes when changing attendance status
     });
     setAttendance(newAttendance);
     setHasChanges(true);
@@ -140,7 +141,8 @@ export default function AttendancePage() {
       newAttendance.set(student.id, {
         student_id: student.id,
         status: newStatus,
-        updated_at: currentItem?.updated_at
+        updated_at: currentItem?.updated_at,
+        notes: '' // Clear notes when toggling all attendance
       });
     });
     setAttendance(newAttendance);
