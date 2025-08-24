@@ -1007,6 +1007,24 @@ interface UserSheetData {
  * Columns: username, first_name, last_name, email, role, status, active
  * Note: Passwords are NOT stored in Google Sheets for security reasons
  */
+/**
+ * Convert Polish role names to English system values
+ */
+function normalizeRole(role: string): string {
+  const roleMap: { [key: string]: string } = {
+    'właściciel': 'owner',
+    'wlasciciel': 'owner', // without polish characters
+    'owner': 'owner',
+    'recepcja': 'reception',
+    'reception': 'reception',
+    'instruktor': 'instructor',
+    'instructor': 'instructor'
+  };
+  
+  const normalizedRole = role.toLowerCase().trim();
+  return roleMap[normalizedRole] || 'instructor';
+}
+
 export async function getUsersFromSheets(): Promise<UserSheetData[]> {
   try {
     const cacheKey = getCacheKey('users_sheet');
@@ -1026,12 +1044,13 @@ export async function getUsersFromSheets(): Promise<UserSheetData[]> {
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
       if (row && row[0]) { // username is required
+        const rawRole = row[4] || 'instructor';
         users.push({
           username: row[0] || '',
           firstName: row[1] || '',
           lastName: row[2] || '',
           email: row[3] || '',
-          role: row[4] || 'instructor',
+          role: normalizeRole(rawRole),
           status: row[5] || 'active',
           active: row[6] === 'TRUE' || row[6] === 'true' || row[6] === '1'
         });
