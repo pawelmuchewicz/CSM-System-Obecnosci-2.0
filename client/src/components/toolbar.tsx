@@ -13,7 +13,8 @@ interface ToolbarProps {
   selectedDate: string;
   onDateChange: (date: string) => void;
   studentCount: number;
-  onSelectAllPresent: () => void;
+  onToggleAllAttendance: () => void;
+  allStudentsPresent: boolean;
   onSave: () => void;
   hasChanges: boolean;
   isSaving: boolean;
@@ -26,7 +27,8 @@ export function Toolbar({
   selectedDate,
   onDateChange,
   studentCount,
-  onSelectAllPresent,
+  onToggleAllAttendance,
+  allStudentsPresent,
   onSave,
   hasChanges,
   isSaving
@@ -81,16 +83,16 @@ export function Toolbar({
         </div>
 
         <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
-          {/* Select All Button */}
+          {/* Toggle All Attendance Button */}
           <Button
             type="button"
             variant="outline"
-            onClick={onSelectAllPresent}
+            onClick={onToggleAllAttendance}
             disabled={!selectedGroup || studentCount === 0}
-            data-testid="button-select-all"
+            data-testid="button-toggle-all"
           >
             <CheckCheck className="w-4 h-4 mr-2 text-primary" />
-            Wszyscy obecni
+            {allStudentsPresent ? 'Wszyscy nieobecni' : 'Wszyscy obecni'}
           </Button>
 
           {/* Save Button */}

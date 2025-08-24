@@ -119,15 +119,24 @@ export default function AttendancePage() {
     setHasChanges(true);
   };
 
-  const handleSelectAllPresent = () => {
+  const handleToggleAllAttendance = () => {
     if (!studentsData?.students) return;
+    
+    // Check if all students are present
+    const allPresent = studentsData.students.every(student => {
+      const studentAttendance = attendance.get(student.id);
+      return studentAttendance?.status === 'obecny';
+    });
+    
+    // Toggle: if all present, mark all absent; if not all present, mark all present
+    const newStatus = allPresent ? 'nieobecny' : 'obecny';
     
     const newAttendance = new Map(attendance);
     studentsData.students.forEach(student => {
       const currentItem = attendance.get(student.id);
       newAttendance.set(student.id, {
         student_id: student.id,
-        status: 'obecny',
+        status: newStatus,
         updated_at: currentItem?.updated_at
       });
     });
@@ -149,6 +158,12 @@ export default function AttendancePage() {
   const groups = groupsData?.groups || [];
   const students = studentsData?.students || [];
   const isLoading = groupsLoading || studentsLoading || attendanceLoading;
+  
+  // Check if all students are present
+  const allStudentsPresent = students.length > 0 && students.every(student => {
+    const studentAttendance = attendance.get(student.id);
+    return studentAttendance?.status === 'obecny';
+  });
 
   return (
     <div className="min-h-full">
@@ -186,7 +201,8 @@ export default function AttendancePage() {
           selectedDate={selectedDate}
           onDateChange={handleDateChange}
           studentCount={students.length}
-          onSelectAllPresent={handleSelectAllPresent}
+          onToggleAllAttendance={handleToggleAllAttendance}
+          allStudentsPresent={allStudentsPresent}
           onSave={handleSave}
           hasChanges={hasChanges}
           isSaving={saveAttendanceMutation.isPending}

@@ -308,20 +308,21 @@ export async function getAttendance(groupId: string, dateISO: string): Promise<{
     const sheets = await getSheets();
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Attendance!A1:E10000' // Include notes column
+      range: 'Attendance!A1:K10000' // Include all columns
     });
 
     const rows = response.data.values || [];
     const attendanceMap = new Map<string, { status: string; updated_at: string; notes?: string }>();
 
     // Process attendance records for this session
+    // New structure: A=session_id, B=student_id, C=first_name, D=last_name, E=group_name, F=class, G=phone, H=mail, I=status, J=updated_at, K=notes
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
       if (row[0] === sessionId && row[1]) {
         const studentId = row[1];
-        const status = row[2] || 'absent';
-        const updatedAt = row[3] || new Date().toISOString();
-        const notes = row[4] || '';
+        const status = row[8] || 'absent';        // Column I: status
+        const updatedAt = row[9] || new Date().toISOString(); // Column J: updated_at
+        const notes = row[10] || '';              // Column K: notes
         
         // Keep only the latest record for each student
         if (!attendanceMap.has(studentId) || updatedAt > (attendanceMap.get(studentId)?.updated_at || '')) {
@@ -363,6 +364,10 @@ export async function setAttendance(
     const conflicts: AttendanceItem[] = [];
     const validUpdates: AttendanceItem[] = [];
 
+    // Get students data to include additional info
+    const students = await getStudents(groupId);
+    const studentsMap = new Map(students.map(s => [s.id, s]));
+
     // Check for conflicts
     for (const item of items) {
       const current = currentAttendance.items.find(a => a.student_id === item.student_id);
@@ -379,19 +384,36 @@ export async function setAttendance(
     }
 
     // Append new attendance records for valid updates
-    const now = new Date().toISOString();
-    const newRows = validUpdates.map(item => [
-      sessionId,
-      item.student_id,
-      item.status === 'obecny' ? 'present' : 'absent',
-      now,
-      item.notes || '' // Add notes as 5th column
-    ]);
+    // Use Polish timezone (UTC+1 in winter, UTC+2 in summer)
+    const now = new Date();
+    const polandTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (2 * 3600000)); // UTC+2 for Poland summer time
+    const formattedTime = polandTime.toISOString();
+    
+    // Get group name
+    const config = GROUPS_CONFIG[groupId];
+    const groupName = config?.name || groupId;
+    
+    const newRows = validUpdates.map(item => {
+      const student = studentsMap.get(item.student_id);
+      return [
+        sessionId,                                    // A: session_id
+        item.student_id,                             // B: student_id
+        student?.first_name || '',                   // C: student_name (first_name)
+        student?.last_name || '',                    // D: student_lastname  
+        groupName,                                   // E: group_name
+        student?.class || '',                        // F: class
+        student?.phone || '',                        // G: phone
+        student?.mail || '',                         // H: mail
+        item.status === 'obecny' ? 'present' : 'absent', // I: status
+        formattedTime,                               // J: updated_at
+        item.notes || ''                             // K: notes
+      ];
+    });
 
     if (newRows.length > 0) {
       await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: 'Attendance!A:E', // Extend to column E for notes
+        range: 'Attendance!A:K', // Extend to include all columns
         valueInputOption: 'RAW',
         requestBody: {
           values: newRows
@@ -403,7 +425,7 @@ export async function setAttendance(
     const updated = validUpdates.map(item => ({
       student_id: item.student_id,
       status: item.status,
-      updated_at: now,
+      updated_at: formattedTime,
       notes: item.notes || ''
     }));
 
