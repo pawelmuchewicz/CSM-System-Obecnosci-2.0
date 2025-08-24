@@ -13,10 +13,15 @@ import { StatsCharts } from "@/components/stats-charts";
 import type { AttendanceReportFilters } from "@shared/schema";
 
 export function ReportsPage() {
+  // Set default date range (last 30 days)
+  const today = new Date();
+  const thirtyDaysAgo = new Date(today);
+  thirtyDaysAgo.setDate(today.getDate() - 30);
+  
   const [filters, setFilters] = useState<AttendanceReportFilters>({
-    groupIds: [],
-    dateFrom: '',
-    dateTo: '',
+    groupIds: ['TTI'], // Default to TTI group
+    dateFrom: thirtyDaysAgo.toISOString().split('T')[0],
+    dateTo: today.toISOString().split('T')[0],
     status: 'all'
   });
 
@@ -29,6 +34,7 @@ export function ReportsPage() {
     queryKey: ['/api/reports/attendance', filters],
     queryFn: () => fetchAttendanceReport(filters),
     enabled: !!(filters.dateFrom && filters.dateTo),
+    retry: 1,
   });
 
   const groups = groupsData?.groups || [];
@@ -95,14 +101,13 @@ export function ReportsPage() {
             <div className="space-y-2">
               <Label htmlFor="groupFilter">Grupa</Label>
               <Select 
-                value={filters.groupIds?.[0] || 'all'} 
-                onValueChange={(value) => updateFilter('groupIds', value === 'all' ? [] : [value])}
+                value={filters.groupIds?.[0] || ''} 
+                onValueChange={(value) => updateFilter('groupIds', value ? [value] : [])}
               >
                 <SelectTrigger data-testid="select-group">
-                  <SelectValue placeholder="Wszystkie grupy" />
+                  <SelectValue placeholder="Wybierz grupę" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Wszystkie grupy</SelectItem>
                   {groups.map((group) => (
                     <SelectItem key={group.id} value={group.id}>
                       {group.name}
@@ -228,8 +233,13 @@ export function ReportsPage() {
           )}
 
           {error && (
-            <div className="text-center py-8 text-red-600">
-              Błąd podczas ładowania raportu. Sprawdź filtry i spróbuj ponownie.
+            <div className="text-center py-8">
+              <div className="text-red-600 mb-4">
+                Błąd podczas ładowania raportu. Część grup może być niedostępna.
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Spróbuj wybrać konkretną grupę lub zmień zakres dat.
+              </div>
             </div>
           )}
 

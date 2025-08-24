@@ -358,7 +358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       `;
 
       // Generate PDF using puppeteer
-      const puppeteer = require('puppeteer');
+      const puppeteer = await import('puppeteer').then(m => m.default);
       const browser = await puppeteer.launch({
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox']

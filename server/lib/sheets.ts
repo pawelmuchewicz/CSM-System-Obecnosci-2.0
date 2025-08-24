@@ -768,9 +768,16 @@ export async function getInstructorsForGroup(groupId: string): Promise<(Instruct
 export async function getAttendanceReport(filters: AttendanceReportFilters): Promise<AttendanceReportResponse> {
   try {
     const groups = await getGroups();
-    const filteredGroups = filters.groupIds ? 
+    
+    // Limit to specific groups to avoid API rate limits
+    let filteredGroups = filters.groupIds ? 
       groups.filter(g => filters.groupIds!.includes(g.id)) : 
-      groups;
+      [];
+    
+    // If no specific groups selected, default to first group only to avoid rate limits
+    if (filteredGroups.length === 0) {
+      filteredGroups = groups.slice(0, 1);
+    }
 
     const allItems: AttendanceReportItem[] = [];
     const studentStatsMap = new Map<string, StudentStats>();
@@ -778,13 +785,14 @@ export async function getAttendanceReport(filters: AttendanceReportFilters): Pro
 
     // Process each group
     for (const group of filteredGroups) {
-      const students = await getStudents(group.id, true);
-      const filteredStudents = filters.studentIds ? 
-        students.filter(s => filters.studentIds!.includes(s.id)) : 
-        students;
+      try {
+        const students = await getStudents(group.id, true);
+        const filteredStudents = filters.studentIds ? 
+          students.filter(s => filters.studentIds!.includes(s.id)) : 
+          students;
 
-      // Get all sessions for this group within date range
-      const sessions = await getGroupSessions(group.id, filters.dateFrom, filters.dateTo);
+        // Get all sessions for this group within date range
+        const sessions = await getGroupSessions(group.id, filters.dateFrom, filters.dateTo);
       
       for (const session of sessions) {
         const attendance = await getAttendance(group.id, session.date);
@@ -853,6 +861,11 @@ export async function getAttendanceReport(filters: AttendanceReportFilters): Pro
           absentSessions: totalGroupSessions - presentGroupSessions,
           attendancePercentage: totalGroupSessions > 0 ? Math.round((presentGroupSessions / totalGroupSessions) * 100) : 0
         });
+      }
+      } catch (error) {
+        console.warn(`Skipping group ${group.id} due to access error:`, error);
+        // Continue with other groups instead of failing the entire report
+        continue;
       }
     }
 
