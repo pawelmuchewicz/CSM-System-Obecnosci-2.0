@@ -180,7 +180,7 @@ export async function getStudents(groupId?: string): Promise<Student[]> {
     const spreadsheetId = getSpreadsheetId(groupId);
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Students!A1:G2000'
+      range: 'Students!A1:H2000' // Include mail column
     });
 
     const rows = response.data.values || [];
@@ -224,6 +224,10 @@ export async function getStudents(groupId?: string): Promise<Student[]> {
             break;
           case 'phone':
             student.phone = value ? String(value).trim() : undefined;
+            break;
+          case 'mail':
+          case 'email':
+            student.mail = value ? String(value).trim() : undefined;
             break;
         }
       });

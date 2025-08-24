@@ -14,6 +14,7 @@ export type Student = {
   active: boolean;
   class?: string;
   phone?: string;
+  mail?: string;
 };
 
 export type AttendanceItem = {

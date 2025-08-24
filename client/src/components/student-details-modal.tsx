@@ -72,7 +72,9 @@ export function StudentDetailsModal({
   };
 
   const handleSendEmail = () => {
-    const email = `${student.first_name.toLowerCase()}.${student.last_name.toLowerCase()}@example.com`;
+    if (!student.mail) return;
+    
+    const email = student.mail;
     const subject = `Wiadomość dotycząca ucznia ${student.first_name} ${student.last_name}`;
     const body = `Dzień dobry,\n\nPiszę w sprawie ucznia ${student.first_name} ${student.last_name} z grupy ${groupName}.\n\nPozdrawiam`;
     
@@ -151,6 +153,7 @@ export function StudentDetailsModal({
               variant="outline"
               className="flex-1"
               onClick={handleSendEmail}
+              disabled={!student.mail}
               data-testid="button-send-email"
             >
               <Mail className="w-4 h-4 mr-2" />
