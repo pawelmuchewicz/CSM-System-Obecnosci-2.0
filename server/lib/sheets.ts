@@ -308,21 +308,21 @@ export async function getAttendance(groupId: string, dateISO: string): Promise<{
     const sheets = await getSheets();
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Attendance!A1:K10000' // Include all columns
+      range: 'Attendance!A1:I10000' // Include all columns A-I
     });
 
     const rows = response.data.values || [];
     const attendanceMap = new Map<string, { status: string; updated_at: string; notes?: string }>();
 
     // Process attendance records for this session
-    // New structure: A=session_id, B=student_id, C=first_name, D=last_name, E=group_name, F=class, G=phone, H=mail, I=status, J=updated_at, K=notes
+    // Structure: A=session_id, B=student_id, C=status, D=note, E=updated_at, F=student_name, G=class, H=phone, I=group_name
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
       if (row[0] === sessionId && row[1]) {
         const studentId = row[1];
-        const status = row[8] || 'absent';        // Column I: status
-        const updatedAt = row[9] || new Date().toISOString(); // Column J: updated_at
-        const notes = row[10] || '';              // Column K: notes
+        const status = row[2] || 'nieobecny';    // Column C: status (po polsku)
+        const notes = row[3] || '';              // Column D: note
+        const updatedAt = row[4] || new Date().toISOString(); // Column E: updated_at
         
         // Keep only the latest record for each student
         if (!attendanceMap.has(studentId) || updatedAt > (attendanceMap.get(studentId)?.updated_at || '')) {
@@ -336,7 +336,7 @@ export async function getAttendance(groupId: string, dateISO: string): Promise<{
       const attendance = attendanceMap.get(student.id);
       return {
         student_id: student.id,
-        status: attendance ? normalizeStatus(attendance.status) : 'nieobecny',
+        status: attendance?.status === 'obecny' ? 'obecny' : 'nieobecny', // Status już po polsku
         updated_at: attendance?.updated_at,
         notes: attendance?.notes || ''
       };
@@ -398,22 +398,20 @@ export async function setAttendance(
       return [
         sessionId,                                    // A: session_id
         item.student_id,                             // B: student_id
-        student?.first_name || '',                   // C: student_name (first_name)
-        student?.last_name || '',                    // D: student_lastname  
-        groupName,                                   // E: group_name
-        student?.class || '',                        // F: class
-        student?.phone || '',                        // G: phone
-        student?.mail || '',                         // H: mail
-        item.status === 'obecny' ? 'present' : 'absent', // I: status
-        formattedTime,                               // J: updated_at
-        item.notes || ''                             // K: notes
+        item.status,                                 // C: status (po polsku: obecny/nieobecny)
+        item.notes || '',                            // D: note
+        formattedTime,                               // E: updated_at
+        student?.first_name || '',                   // F: student_name
+        student?.class || '',                        // G: class
+        student?.phone || '',                        // H: phone
+        groupName                                    // I: group_name
       ];
     });
 
     if (newRows.length > 0) {
       await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: 'Attendance!A:K', // Extend to include all columns
+        range: 'Attendance!A:I', // A-I columns as per sheet structure
         valueInputOption: 'RAW',
         requestBody: {
           values: newRows
