@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCheck, Save, Users } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { CheckCheck, Save, Users, Eye, EyeOff } from "lucide-react";
 import type { Group } from "@shared/schema";
 
 interface ToolbarProps {
@@ -18,6 +19,8 @@ interface ToolbarProps {
   onSave: () => void;
   hasChanges: boolean;
   isSaving: boolean;
+  showInactive: boolean;
+  onShowInactiveChange: (show: boolean) => void;
 }
 
 export function Toolbar({
@@ -31,7 +34,9 @@ export function Toolbar({
   allStudentsPresent,
   onSave,
   hasChanges,
-  isSaving
+  isSaving,
+  showInactive,
+  onShowInactiveChange
 }: ToolbarProps) {
   return (
     <div className="bg-white rounded-lg shadow-md border border-gray-200 p-4 mb-6">
@@ -79,6 +84,25 @@ export function Toolbar({
           <div className="flex items-center text-sm text-gray-600 pt-6 bg-gray-50 px-3 py-2 rounded-md shadow-sm border border-gray-200">
             <Users className="w-4 h-4 mr-1" />
             <span data-testid="text-student-count">{studentCount}</span> uczniów
+          </div>
+
+          {/* Show Inactive Toggle */}
+          <div className="flex items-center space-x-2 pt-6">
+            <div className="flex items-center space-x-2 bg-gray-50 px-3 py-2 rounded-md shadow-sm border border-gray-200">
+              {showInactive ? (
+                <Eye className="w-4 h-4 text-gray-600" />
+              ) : (
+                <EyeOff className="w-4 h-4 text-gray-600" />
+              )}
+              <Switch
+                checked={showInactive}
+                onCheckedChange={onShowInactiveChange}
+                data-testid="switch-show-inactive"
+              />
+              <span className="text-sm text-gray-600 whitespace-nowrap">
+                Nieaktywni
+              </span>
+            </div>
           </div>
         </div>
 

@@ -20,6 +20,7 @@ export default function AttendancePage() {
   const [conflicts, setConflicts] = useState<AttendanceItem[]>([]);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [pendingSaveData, setPendingSaveData] = useState<{ groupId: string; date: string; items: AttendanceItem[] } | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
 
   // Fetch groups
   const { data: groupsData, isLoading: groupsLoading } = useQuery({
@@ -29,8 +30,8 @@ export default function AttendancePage() {
 
   // Fetch students for selected group
   const { data: studentsData, isLoading: studentsLoading } = useQuery({
-    queryKey: ['/api/students', selectedGroup],
-    queryFn: () => fetchStudents(selectedGroup),
+    queryKey: ['/api/students', selectedGroup, showInactive],
+    queryFn: () => fetchStudents(selectedGroup, showInactive),
     enabled: !!selectedGroup,
   });
 
@@ -238,6 +239,8 @@ export default function AttendancePage() {
           onSave={handleSave}
           hasChanges={hasChanges}
           isSaving={saveAttendanceMutation.isPending}
+          showInactive={showInactive}
+          onShowInactiveChange={setShowInactive}
         />
 
         {/* Conflict Banner */}

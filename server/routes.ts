@@ -18,11 +18,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/students?groupId=G1
+  // GET /api/students?groupId=G1&showInactive=true
   app.get("/api/students", async (req, res) => {
     try {
       const groupId = req.query.groupId as string;
-      const students = await getStudents(groupId);
+      const showInactive = req.query.showInactive === 'true';
+      
+      const students = await getStudents(groupId, showInactive);
       res.json({ students });
     } catch (error) {
       console.error("Error fetching students:", error);

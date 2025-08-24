@@ -11,8 +11,21 @@ export async function fetchGroups(): Promise<{ groups: Group[] }> {
   return response.json();
 }
 
-export async function fetchStudents(groupId?: string): Promise<{ students: Student[] }> {
-  const url = groupId ? `${API_BASE}/students?groupId=${groupId}` : `${API_BASE}/students`;
+export async function fetchStudents(groupId?: string, showInactive?: boolean): Promise<{ students: Student[] }> {
+  let url = `${API_BASE}/students`;
+  const params = new URLSearchParams();
+  
+  if (groupId) {
+    params.append('groupId', groupId);
+  }
+  if (showInactive !== undefined) {
+    params.append('showInactive', showInactive.toString());
+  }
+  
+  if (params.toString()) {
+    url += `?${params.toString()}`;
+  }
+  
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to fetch students: ${response.statusText}`);

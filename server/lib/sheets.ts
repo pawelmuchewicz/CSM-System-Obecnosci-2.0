@@ -170,7 +170,7 @@ export async function getGroups(): Promise<Group[]> {
   }
 }
 
-export async function getStudents(groupId?: string): Promise<Student[]> {
+export async function getStudents(groupId?: string, showInactive: boolean = false): Promise<Student[]> {
   try {
     if (!groupId) {
       return [];
@@ -234,8 +234,11 @@ export async function getStudents(groupId?: string): Promise<Student[]> {
         }
       });
 
-      // Validate required fields
-      if (student.id && student.first_name && student.last_name && student.group_id && student.active) {
+      // Validate required fields and filter by active status
+      const isValidStudent = student.id && student.first_name && student.last_name && student.group_id;
+      const shouldInclude = showInactive || student.active;
+      
+      if (isValidStudent && shouldInclude) {
         students.push(student as Student);
       }
     }
