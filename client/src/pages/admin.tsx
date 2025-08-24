@@ -151,7 +151,7 @@ export default function AdminPage() {
             <CardHeader>
               <CardTitle>Konta oczekujące na zatwierdzenie</CardTitle>
               <p className="text-sm text-muted-foreground mt-2">
-                <strong>Instruktor</strong> • <strong>Recepcja</strong> • Hasło: <code className="bg-gray-100 px-1 rounded">wybierz funkcję dla użytkownika</code>
+                <code className="bg-gray-100 px-1 rounded">wybierz funkcję dla użytkownika</code>
               </p>
             </CardHeader>
             <CardContent>
@@ -261,6 +261,7 @@ export default function AdminPage() {
 function AllUsersTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const permissions = usePermissions();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -460,6 +461,42 @@ function AllUsersTab() {
     }
   };
 
+  const getStatusDisplayName = (status: string, active: boolean) => {
+    if (!active) return 'Nieaktywny';
+    switch (status) {
+      case 'active': return 'Aktywny';
+      case 'pending': return 'Oczekuje';
+      case 'inactive': return 'Nieaktywny';
+      default: return status;
+    }
+  };
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      await apiRequest('DELETE', `/api/admin/users/${userId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Sukces",
+        description: "Nieaktywny użytkownik został usunięty",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Błąd",
+        description: error?.message || "Nie udało się usunąć użytkownika",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteUser = (userId: number) => {
+    if (window.confirm('Czy na pewno chcesz usunąć tego nieaktywnego użytkownika? Ta operacja jest nieodwracalna.')) {
+      deleteUserMutation.mutate(userId);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Sync Controls */}
@@ -637,12 +674,9 @@ function AllUsersTab() {
                       <Badge variant={getStatusColor(user.status, user.active)}>
                         {getRoleDisplayName(user.role)}
                       </Badge>
-                      {!user.active && (
-                        <Badge variant="destructive">
-                          <AlertCircle className="w-3 h-3 mr-1" />
-                          Nieaktywny
-                        </Badge>
-                      )}
+                      <Badge variant={getStatusColor(user.status, user.active)}>
+                        {getStatusDisplayName(user.status, user.active)}
+                      </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {user.email || 'Brak email'}

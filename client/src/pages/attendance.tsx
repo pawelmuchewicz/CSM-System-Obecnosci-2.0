@@ -235,7 +235,7 @@ export default function AttendancePage() {
             </div>
             <div className="flex items-center space-x-3">
               <div className="text-sm text-gray-500">
-                <span>Nauczyciel</span>
+                <span>Właściciel</span>
               </div>
               <div className="h-8 w-8 bg-primary-100 rounded-full flex items-center justify-center">
                 <Users className="text-primary text-sm" />
