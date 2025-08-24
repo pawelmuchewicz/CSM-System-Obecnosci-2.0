@@ -7,6 +7,7 @@ import { Toolbar } from "@/components/toolbar";
 import { AttendanceTable } from "@/components/attendance-table";
 import { fetchGroups, fetchStudents, fetchAttendance, saveAttendance, invalidateAttendanceQueries } from "@/lib/api";
 import type { AttendanceItem } from "@shared/schema";
+import { ConfirmationModal } from "@/components/confirmation-modal";
 
 export default function AttendancePage() {
   const { toast } = useToast();
@@ -17,6 +18,8 @@ export default function AttendancePage() {
   const [attendance, setAttendance] = useState<Map<string, AttendanceItem>>(new Map());
   const [hasChanges, setHasChanges] = useState(false);
   const [conflicts, setConflicts] = useState<AttendanceItem[]>([]);
+  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
+  const [pendingSaveData, setPendingSaveData] = useState<{ groupId: string; date: string; items: AttendanceItem[] } | null>(null);
 
   // Fetch groups
   const { data: groupsData, isLoading: groupsLoading } = useQuery({
@@ -144,15 +147,42 @@ export default function AttendancePage() {
     setHasChanges(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedGroup || !selectedDate) return;
 
     const items = Array.from(attendance.values());
-    saveAttendanceMutation.mutate({
-      groupId: selectedGroup,
-      date: selectedDate,
-      items
-    });
+    
+    // Check if attendance already exists
+    try {
+      const response = await fetch(`/api/attendance/exists?groupId=${selectedGroup}&date=${selectedDate}`);
+      const data = await response.json();
+      
+      if (data.exists) {
+        // Show confirmation modal
+        setPendingSaveData({ groupId: selectedGroup, date: selectedDate, items });
+        setIsConfirmationModalOpen(true);
+      } else {
+        // Save directly for first time
+        saveAttendanceMutation.mutate({ groupId: selectedGroup, date: selectedDate, items });
+      }
+    } catch (error) {
+      console.error('Error checking attendance existence:', error);
+      // If check fails, save anyway
+      saveAttendanceMutation.mutate({ groupId: selectedGroup, date: selectedDate, items });
+    }
+  };
+
+  const handleConfirmSave = () => {
+    if (pendingSaveData) {
+      saveAttendanceMutation.mutate(pendingSaveData);
+      setPendingSaveData(null);
+    }
+    setIsConfirmationModalOpen(false);
+  };
+
+  const handleCancelSave = () => {
+    setPendingSaveData(null);
+    setIsConfirmationModalOpen(false);
   };
 
   const groups = groupsData?.groups || [];
@@ -248,6 +278,17 @@ export default function AttendancePage() {
           />
         )}
       </main>
+
+      {/* Confirmation Modal for existing attendance */}
+      <ConfirmationModal
+        isOpen={isConfirmationModalOpen}
+        onClose={handleCancelSave}
+        onConfirm={handleConfirmSave}
+        title="Potwierdzenie aktualizacji frekwencji"
+        description={`Frekwencja dla tej grupy i daty została już wcześniej zapisana. Czy na pewno chcesz wprowadzić zmiany? Poprzednie dane zostaną zastąpione nowymi.`}
+        confirmText="Tak, zapisz zmiany"
+        cancelText="Anuluj"
+      />
     </div>
   );
 }

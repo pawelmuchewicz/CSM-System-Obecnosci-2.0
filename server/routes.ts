@@ -55,6 +55,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/attendance/exists - Check if attendance already exists
+  app.get("/api/attendance/exists", async (req, res) => {
+    try {
+      const { groupId, date } = req.query;
+      
+      if (!groupId || !date) {
+        return res.status(400).json({ 
+          message: "Missing required parameters: groupId and date" 
+        });
+      }
+
+      const attendance = await getAttendance(groupId as string, date as string);
+      // Check if any student has attendance recorded (has updated_at timestamp)
+      const hasExistingAttendance = attendance.items.some(item => item.updated_at);
+      res.json({ exists: hasExistingAttendance });
+    } catch (error) {
+      console.error("Error checking attendance existence:", error);
+      res.status(502).json({ 
+        message: "Failed to check attendance existence" 
+      });
+    }
+  });
+
   // POST /api/attendance
   app.post("/api/attendance", async (req, res) => {
     try {
