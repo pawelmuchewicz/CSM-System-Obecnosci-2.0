@@ -12,6 +12,49 @@ if (!process.env.GOOGLE_SHEETS_SPREADSHEET_ID) {
   throw new Error('Missing GOOGLE_SHEETS_SPREADSHEET_ID environment variable');
 }
 
+// Enhanced cache system to reduce Google Sheets API calls
+interface CacheItem<T> {
+  data: T;
+  timestamp: number;
+}
+
+const cache = new Map<string, CacheItem<any>>();
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+const STUDENTS_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes for students
+const ATTENDANCE_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for attendance
+
+function getCacheKey(operation: string, ...params: any[]): string {
+  return `${operation}:${params.join(':')}`;
+}
+
+function getFromCache<T>(key: string, maxAge: number = CACHE_DURATION): T | null {
+  const item = cache.get(key);
+  if (item && (Date.now() - item.timestamp) < maxAge) {
+    console.log(`Cache HIT for ${key}`);
+    return item.data as T;
+  }
+  if (item) cache.delete(key);
+  return null;
+}
+
+function setCache<T>(key: string, data: T): void {
+  cache.set(key, { data, timestamp: Date.now() });
+  console.log(`Cache SET for ${key}`);
+}
+
+function clearCache(pattern?: string): void {
+  if (pattern) {
+    const keys = Array.from(cache.keys());
+    for (const key of keys) {
+      if (key.includes(pattern)) {
+        cache.delete(key);
+      }
+    }
+  } else {
+    cache.clear();
+  }
+}
+
 // Configuration for groups and their spreadsheets
 const GROUPS_CONFIG: Record<string, { name: string; spreadsheetId: string; sheetGroupId?: string }> = {
   'TTI': {
@@ -153,29 +196,43 @@ function normalizeStatus(s: any): 'obecny' | 'nieobecny' {
 }
 
 export async function getGroups(): Promise<Group[]> {
+  const cacheKey = getCacheKey('groups');
+  const cached = getFromCache<Group[]>(cacheKey, CACHE_DURATION);
+  if (cached) return cached;
+
   try {
     // Return groups from configuration
-    return Object.entries(GROUPS_CONFIG).map(([id, config]) => ({
+    const groups = Object.entries(GROUPS_CONFIG).map(([id, config]) => ({
       id,
       name: config.name,
       spreadsheetId: config.spreadsheetId
     }));
+    
+    setCache(cacheKey, groups);
+    return groups;
   } catch (error) {
     console.error('Error fetching groups:', error);
-    return [{
+    const fallbackGroups = [{
       id: 'TTI',
       name: 'TTI',
       spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID!
     }];
+    setCache(cacheKey, fallbackGroups);
+    return fallbackGroups;
   }
 }
 
 export async function getStudents(groupId?: string, showInactive: boolean = false): Promise<Student[]> {
+  if (!groupId) {
+    return [];
+  }
+
+  // Cache dla studentów - każda grupa osobno
+  const cacheKey = getCacheKey('students', groupId, showInactive.toString());
+  const cached = getFromCache<Student[]>(cacheKey, STUDENTS_CACHE_DURATION);
+  if (cached) return cached;
+
   try {
-    if (!groupId) {
-      return [];
-    }
-    
     const sheets = await getSheets();
     const spreadsheetId = getSpreadsheetId(groupId);
     
@@ -289,6 +346,7 @@ export async function getStudents(groupId?: string, showInactive: boolean = fals
       return a.first_name.localeCompare(b.first_name, 'pl');
     });
 
+    setCache(cacheKey, filteredStudents);
     return filteredStudents;
   } catch (error) {
     console.error(`Failed to fetch students for group ${groupId}:`, error);
