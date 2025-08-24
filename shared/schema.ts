@@ -149,7 +149,12 @@ export const instructorsAuth = pgTable("instructors_auth", {
   lastName: varchar("last_name", { length: 100 }).notNull(),
   email: varchar("email", { length: 255 }).unique(),
   phone: varchar("phone", { length: 20 }),
-  active: boolean("active").default(true),
+  role: varchar("role", { length: 20 }).default("instructor"), // "owner", "reception", "instructor"
+  status: varchar("status", { length: 20 }).default("pending"), // "pending", "active", "inactive"
+  active: boolean("active").default(true), // Kept for backward compatibility
+  approvedBy: integer("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -159,18 +164,32 @@ export const instructorGroupAssignments = pgTable("instructor_group_assignments"
   id: serial("id").primaryKey(),
   instructorId: integer("instructor_id").notNull().references(() => instructorsAuth.id, { onDelete: "cascade" }),
   groupId: varchar("group_id", { length: 50 }).notNull(), // Maps to Google Sheets groups like "TTI", "HipHop"
-  role: varchar("role", { length: 20 }).default("instructor"), // "admin", "instructor"
+  role: varchar("role", { length: 20 }).default("instructor"), // Kept for backward compatibility, now use instructorsAuth.role
+  canManageStudents: boolean("can_manage_students").default(false), // Can add/remove/edit students
+  canViewReports: boolean("can_view_reports").default(true), // Can view attendance reports
+  assignedBy: integer("assigned_by"),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Relations
-export const instructorsAuthRelations = relations(instructorsAuth, ({ many }) => ({
+export const instructorsAuthRelations = relations(instructorsAuth, ({ many, one }) => ({
   groupAssignments: many(instructorGroupAssignments),
+  approvedUsers: many(instructorsAuth, { relationName: "approver" }),
+  approver: one(instructorsAuth, { 
+    fields: [instructorsAuth.approvedBy], 
+    references: [instructorsAuth.id],
+    relationName: "approver"
+  }),
 }));
 
 export const instructorGroupAssignmentsRelations = relations(instructorGroupAssignments, ({ one }) => ({
   instructor: one(instructorsAuth, {
     fields: [instructorGroupAssignments.instructorId],
+    references: [instructorsAuth.id],
+  }),
+  assignedByUser: one(instructorsAuth, {
+    fields: [instructorGroupAssignments.assignedBy],
     references: [instructorsAuth.id],
   }),
 }));
@@ -193,7 +212,47 @@ export const createInstructorSchema = createInsertSchema(instructorsAuth, {
   firstName: z.string().min(2, "Imię musi mieć co najmniej 2 znaki"),
   lastName: z.string().min(2, "Nazwisko musi mieć co najmniej 2 znaki"),
   email: z.string().email("Nieprawidłowy adres email").optional(),
-}).omit({ id: true, createdAt: true, updatedAt: true });
+  role: z.enum(["owner", "reception", "instructor"]).default("instructor"),
+}).omit({ id: true, status: true, active: true, approvedBy: true, approvedAt: true, lastLoginAt: true, createdAt: true, updatedAt: true });
+
+export const registerInstructorSchema = z.object({
+  username: z.string().min(3, "Nazwa użytkownika musi mieć co najmniej 3 znaki"),
+  password: z.string().min(6, "Hasło musi mieć co najmniej 6 znaków"),
+  firstName: z.string().min(2, "Imię musi mieć co najmniej 2 znaki"),
+  lastName: z.string().min(2, "Nazwisko musi mieć co najmniej 2 znaki"),
+  email: z.string().email("Nieprawidłowy adres email"),
+  phone: z.string().optional(),
+});
+
+export const updateUserStatusSchema = z.object({
+  userId: z.number(),
+  status: z.enum(["pending", "active", "inactive"]),
+  role: z.enum(["owner", "reception", "instructor"]).optional(),
+});
+
+export const assignGroupSchema = z.object({
+  instructorId: z.number(),
+  groupId: z.string().min(1),
+  canManageStudents: z.boolean().default(false),
+  canViewReports: z.boolean().default(true),
+});
+
+// Permission helper types
+export type UserRole = "owner" | "reception" | "instructor";
+export type UserStatus = "pending" | "active" | "inactive";
+
+export interface UserPermissions {
+  canManageUsers: boolean;        // Create, approve, deactivate users
+  canAssignGroups: boolean;       // Assign instructors to groups  
+  canManageStudents: boolean;     // Add, remove, edit students
+  canViewAllGroups: boolean;      // See all groups or only assigned ones
+  canChangeContactInfo: boolean;  // Edit phone/email of students
+  canExpelStudents: boolean;      // Change status to "wypisani"
+  canViewReports: boolean;        // Access reports
+}
 
 export type LoginRequest = z.infer<typeof loginSchema>;
 export type CreateInstructorRequest = z.infer<typeof createInstructorSchema>;
+export type RegisterInstructorRequest = z.infer<typeof registerInstructorSchema>;
+export type UpdateUserStatusRequest = z.infer<typeof updateUserStatusSchema>;
+export type AssignGroupRequest = z.infer<typeof assignGroupSchema>;

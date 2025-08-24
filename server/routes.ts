@@ -1,10 +1,10 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { getGroups, getStudents, getAttendance, setAttendance, getInstructors, getInstructorGroups, getInstructorsForGroup, getAttendanceReport } from "./lib/sheets";
-import { attendanceRequestSchema, loginSchema, instructorsAuth, instructorGroupAssignments } from "@shared/schema";
+import { attendanceRequestSchema, loginSchema, instructorsAuth, instructorGroupAssignments, registerInstructorSchema, updateUserStatusSchema, assignGroupSchema } from "@shared/schema";
 import { setupSession, requireAuth, optionalAuth, requireGroupAccess, hashPassword, verifyPassword, type AuthenticatedRequest } from "./auth";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session middleware
@@ -478,6 +478,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error generating PDF export:", error);
       res.status(502).json({ 
         message: "Failed to generate PDF export"
+      });
+    }
+  });
+
+  // === USER MANAGEMENT ROUTES ===
+  
+  // POST /api/auth/register - Public registration
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const userData = registerInstructorSchema.parse(req.body);
+      
+      // Check if username already exists
+      const [existingUser] = await db
+        .select({ id: instructorsAuth.id })
+        .from(instructorsAuth)
+        .where(eq(instructorsAuth.username, userData.username));
+        
+      if (existingUser) {
+        return res.status(400).json({ 
+          message: "Nazwa użytkownika już istnieje",
+          code: "USERNAME_EXISTS" 
+        });
+      }
+      
+      // Check if email already exists
+      if (userData.email) {
+        const [existingEmail] = await db
+          .select({ id: instructorsAuth.id })
+          .from(instructorsAuth)
+          .where(eq(instructorsAuth.email, userData.email));
+          
+        if (existingEmail) {
+          return res.status(400).json({ 
+            message: "Adres email już istnieje",
+            code: "EMAIL_EXISTS" 
+          });
+        }
+      }
+      
+      // Hash password
+      const hashedPassword = await hashPassword(userData.password);
+      
+      // Create user with pending status
+      const [newUser] = await db
+        .insert(instructorsAuth)
+        .values({
+          username: userData.username,
+          password: hashedPassword,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email: userData.email,
+          phone: userData.phone,
+          role: 'instructor',
+          status: 'pending',
+          active: false, // Kept for compatibility
+        })
+        .returning();
+        
+      res.status(201).json({ 
+        message: "Konto zostało utworzone. Oczekuje na zatwierdzenie przez administratora.",
+        userId: newUser.id 
+      });
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(400).json({ 
+        message: "Błąd podczas rejestracji",
+        code: "REGISTRATION_ERROR" 
       });
     }
   });

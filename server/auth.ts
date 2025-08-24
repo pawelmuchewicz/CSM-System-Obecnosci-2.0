@@ -3,7 +3,7 @@ import session from 'express-session';
 import connectPg from 'connect-pg-simple';
 import type { Express, Request, Response, NextFunction } from 'express';
 import { db } from './db';
-import { instructorsAuth, instructorGroupAssignments } from '@shared/schema';
+import { instructorsAuth, instructorGroupAssignments, type UserPermissions, type UserRole } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 
 // Session configuration
@@ -48,9 +48,49 @@ export interface AuthenticatedRequest extends Request {
     firstName: string;
     lastName: string;
     email?: string;
+    role: "owner" | "reception" | "instructor";
+    status: "pending" | "active" | "inactive";
     groupIds: string[];
-    isAdmin: boolean;
+    isAdmin: boolean; // Computed from role for backward compatibility
+    permissions: UserPermissions;
   };
+}
+
+// Helper function to get user permissions based on role
+function getUserPermissions(role: UserRole): UserPermissions {
+  switch (role) {
+    case 'owner':
+      return {
+        canManageUsers: true,
+        canAssignGroups: true,
+        canManageStudents: true,
+        canViewAllGroups: true,
+        canChangeContactInfo: true,
+        canExpelStudents: true,
+        canViewReports: true,
+      };
+    case 'reception':
+      return {
+        canManageUsers: true,
+        canAssignGroups: true,
+        canManageStudents: true,
+        canViewAllGroups: true,
+        canChangeContactInfo: true,
+        canExpelStudents: true,
+        canViewReports: true,
+      };
+    case 'instructor':
+    default:
+      return {
+        canManageUsers: false,
+        canAssignGroups: false,
+        canManageStudents: false,
+        canViewAllGroups: false,
+        canChangeContactInfo: false,
+        canExpelStudents: false,
+        canViewReports: true,
+      };
+  }
 }
 
 export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -62,7 +102,7 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
   }
 
   try {
-    // Get user with their group assignments
+    // Get user with their information including new role and status
     const [user] = await db
       .select({
         id: instructorsAuth.id,
@@ -70,18 +110,28 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
         firstName: instructorsAuth.firstName,
         lastName: instructorsAuth.lastName,
         email: instructorsAuth.email,
+        role: instructorsAuth.role,
+        status: instructorsAuth.status,
         active: instructorsAuth.active,
       })
       .from(instructorsAuth)
       .where(eq(instructorsAuth.id, req.session.userId));
 
-    if (!user || !user.active) {
+    if (!user || !user.active || user.status === 'inactive') {
       req.session.destroy((err) => {
         if (err) console.error('Session destroy error:', err);
       });
       return res.status(401).json({ 
-        message: 'Account deactivated',
-        code: 'ACCOUNT_DEACTIVATED' 
+        message: user?.status === 'pending' ? 'Account pending approval' : 'Account deactivated',
+        code: user?.status === 'pending' ? 'ACCOUNT_PENDING' : 'ACCOUNT_DEACTIVATED' 
+      });
+    }
+
+    // Check if account is pending approval
+    if (user.status === 'pending') {
+      return res.status(403).json({ 
+        message: 'Konto oczekuje na zatwierdzenie przez administratora',
+        code: 'ACCOUNT_PENDING' 
       });
     }
 
@@ -89,13 +139,26 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
     const groupAssignments = await db
       .select({
         groupId: instructorGroupAssignments.groupId,
-        role: instructorGroupAssignments.role,
+        canManageStudents: instructorGroupAssignments.canManageStudents,
+        canViewReports: instructorGroupAssignments.canViewReports,
       })
       .from(instructorGroupAssignments)
       .where(eq(instructorGroupAssignments.instructorId, user.id));
 
     const groupIds = groupAssignments.map(g => g.groupId);
-    const isAdmin = groupAssignments.some(g => g.role === 'admin');
+    const userRole = (user.role || 'instructor') as UserRole;
+    const permissions = getUserPermissions(userRole);
+    
+    // Override permissions based on specific group assignments
+    if (groupAssignments.some(g => g.canManageStudents)) {
+      permissions.canManageStudents = true;
+    }
+
+    // Update last login time
+    await db
+      .update(instructorsAuth)
+      .set({ lastLoginAt: new Date() })
+      .where(eq(instructorsAuth.id, user.id));
 
     req.user = {
       id: user.id,
@@ -103,8 +166,11 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email || undefined,
+      role: userRole,
+      status: (user.status || 'active') as "pending" | "active" | "inactive",
       groupIds,
-      isAdmin,
+      isAdmin: userRole === 'owner' || userRole === 'reception', // Backward compatibility
+      permissions,
     };
 
     next();

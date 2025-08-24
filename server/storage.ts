@@ -48,7 +48,7 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = Math.floor(Math.random() * 1000000);
-    const user: User = { ...insertUser, id };
+    const user: User = { ...insertUser, id, isAdmin: insertUser.isAdmin || false };
     this.users.set(id.toString(), user);
     return user;
   }
