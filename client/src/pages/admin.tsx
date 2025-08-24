@@ -160,7 +160,7 @@ export default function AdminPage() {
                           data-testid={`button-approve-instructor-${user.id}`}
                         >
                           <UserCheck className="w-4 h-4 mr-1" />
-                          Zatwierdź jako Instruktor
+                          Instruktor
                         </Button>
                         
                         {permissions.isOwner && (
@@ -172,7 +172,7 @@ export default function AdminPage() {
                             data-testid={`button-approve-reception-${user.id}`}
                           >
                             <UserCheck className="w-4 h-4 mr-1" />
-                            Zatwierdź jako Recepcja
+                            Recepcja
                           </Button>
                         )}
                       </div>

@@ -1014,6 +1014,7 @@ function normalizeRole(role: string): string {
   const roleMap: { [key: string]: string } = {
     'właściciel': 'owner',
     'wlasciciel': 'owner', // without polish characters
+    'nauczyciel': 'owner',
     'owner': 'owner',
     'recepcja': 'reception',
     'reception': 'reception',
@@ -1023,6 +1024,19 @@ function normalizeRole(role: string): string {
   
   const normalizedRole = role.toLowerCase().trim();
   return roleMap[normalizedRole] || 'instructor';
+}
+
+/**
+ * Convert English system roles to Polish display names for Google Sheets
+ */
+function roleToPolish(role: string): string {
+  const roleMap: { [key: string]: string } = {
+    'owner': 'nauczyciel',
+    'reception': 'recepcja',
+    'instructor': 'instruktor'
+  };
+  
+  return roleMap[role.toLowerCase()] || role;
 }
 
 export async function getUsersFromSheets(): Promise<UserSheetData[]> {
@@ -1095,7 +1109,7 @@ export async function syncUserToSheets(user: UserSheetData): Promise<void> {
       user.firstName,
       user.lastName,
       user.email,
-      user.role,
+      roleToPolish(user.role),
       user.status,
       user.active ? 'TRUE' : 'FALSE'
     ];
@@ -1148,7 +1162,7 @@ export async function syncUsersToSheets(users: UserSheetData[]): Promise<void> {
         user.firstName,
         user.lastName,
         user.email,
-        user.role,
+        roleToPolish(user.role),
         user.status,
         user.active ? 'TRUE' : 'FALSE'
       ])
