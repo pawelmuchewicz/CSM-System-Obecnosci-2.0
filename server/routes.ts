@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { getGroups, getStudents, getAttendance, setAttendance, getInstructors, getInstructorGroups, getInstructorsForGroup, getAttendanceReport, getUsersFromSheets, syncUserToSheets, syncUsersToSheets } from "./lib/sheets";
+import { getGroups, getStudents, getAttendance, setAttendance, getInstructors, getInstructorGroups, getInstructorsForGroup, getAttendanceReport, getUsersFromSheets, syncUserToSheets, syncUsersToSheets, removeUserFromSheets } from "./lib/sheets";
 import { attendanceRequestSchema, loginSchema, instructorsAuth, instructorGroupAssignments, registerInstructorSchema, updateUserStatusSchema, assignGroupSchema } from "@shared/schema";
 import { setupSession, requireAuth, optionalAuth, requireGroupAccess, hashPassword, verifyPassword, type AuthenticatedRequest } from "./auth";
 import { db } from "./db";
@@ -1165,6 +1165,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Remove users from sheets that don't exist in database
+      let sheetDeleted = 0;
+      for (const sheetUser of sheetUsers) {
+        try {
+          const dbUser = dbUserMap.get(sheetUser.username);
+          if (!dbUser) {
+            // User exists in sheet but not in database - remove from sheet
+            await removeUserFromSheets(sheetUser.username);
+            sheetDeleted++;
+          }
+        } catch (userError) {
+          console.error(`Error removing sheet user ${sheetUser.username}:`, userError);
+          errors++;
+        }
+      }
+
       res.json({
         message: `Synchronizacja dwukierunkowa zakończona`,
         database: {
@@ -1173,7 +1189,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         sheets: {
           imported: sheetImported,
-          updated: sheetUpdated
+          updated: sheetUpdated,
+          deleted: sheetDeleted
         },
         errors
       });

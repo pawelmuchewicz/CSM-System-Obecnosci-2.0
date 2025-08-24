@@ -1039,6 +1039,19 @@ function roleToPolish(role: string): string {
   return roleMap[role.toLowerCase()] || role;
 }
 
+/**
+ * Convert English system status to Polish display names for Google Sheets
+ */
+function statusToPolish(status: string): string {
+  const statusMap: { [key: string]: string } = {
+    'active': 'aktywny',
+    'inactive': 'nieaktywny', 
+    'pending': 'oczekuje'
+  };
+  
+  return statusMap[status.toLowerCase()] || status;
+}
+
 export async function getUsersFromSheets(): Promise<UserSheetData[]> {
   try {
     const cacheKey = getCacheKey('users_sheet');
@@ -1110,7 +1123,7 @@ export async function syncUserToSheets(user: UserSheetData): Promise<void> {
       user.lastName,
       user.email,
       roleToPolish(user.role),
-      user.status,
+      statusToPolish(user.status),
       user.active ? 'TRUE' : 'FALSE'
     ];
 
@@ -1146,6 +1159,57 @@ export async function syncUserToSheets(user: UserSheetData): Promise<void> {
 }
 
 /**
+ * Remove a user from Google Sheets
+ */
+export async function removeUserFromSheets(username: string): Promise<void> {
+  try {
+    const sheets = await getSheets();
+    
+    // First get all users to find the row to delete
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: USERS_SPREADSHEET_ID,
+      range: 'A1:G1000'
+    });
+
+    const rows = response.data.values || [];
+    let userRowIndex = -1;
+    
+    // Find user row (skip header row)
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i] && rows[i][0] === username) {
+        userRowIndex = i + 1; // +1 because sheets are 1-indexed
+        break;
+      }
+    }
+
+    if (userRowIndex > 0) {
+      // Delete the row
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: USERS_SPREADSHEET_ID,
+        requestBody: {
+          requests: [{
+            deleteDimension: {
+              range: {
+                sheetId: 0,
+                dimension: 'ROWS',
+                startIndex: userRowIndex - 1, // Convert to 0-indexed
+                endIndex: userRowIndex
+              }
+            }
+          }]
+        }
+      });
+    }
+
+    // Clear cache
+    clearCache('users_sheet');
+  } catch (error) {
+    console.error('Error removing user from sheets:', error);
+    throw new Error('Failed to remove user from Google Sheets');
+  }
+}
+
+/**
  * Sync all users from database to Google Sheets
  * This will overwrite the entire sheet with database data
  */
@@ -1163,7 +1227,7 @@ export async function syncUsersToSheets(users: UserSheetData[]): Promise<void> {
         user.lastName,
         user.email,
         roleToPolish(user.role),
-        user.status,
+        statusToPolish(user.status),
         user.active ? 'TRUE' : 'FALSE'
       ])
     ];
