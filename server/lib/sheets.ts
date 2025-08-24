@@ -321,8 +321,20 @@ export async function getAttendance(groupId: string, dateISO: string): Promise<{
       if (row[0] === sessionId && row[1]) {
         const studentId = row[1];
         const status = row[2] || 'nieobecny';    // Column C: status (po polsku)
-        const notes = row[3] || '';              // Column D: note
-        const updatedAt = row[4] || new Date().toISOString(); // Column E: updated_at
+        
+        // Check if column D contains a timestamp (old format) or actual notes
+        let notes = '';
+        let updatedAt = '';
+        
+        if (row[3] && row[3].includes('T') && row[3].includes('Z')) {
+          // Old format: timestamp in column D
+          notes = '';
+          updatedAt = row[3];
+        } else {
+          // New format: notes in column D, timestamp in column E
+          notes = row[3] || '';
+          updatedAt = row[4] || new Date().toISOString();
+        }
         
         // Keep only the latest record for each student
         if (!attendanceMap.has(studentId) || updatedAt > (attendanceMap.get(studentId)?.updated_at || '')) {
