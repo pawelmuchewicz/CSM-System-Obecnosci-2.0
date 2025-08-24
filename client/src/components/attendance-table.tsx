@@ -40,10 +40,12 @@ export function AttendanceTable({
     setIsModalOpen(false);
     setSelectedStudent(null);
   };
-  // Liczenie tylko dla aktywnych uczniów
+  // Liczenie wszystkich kategorii
   const activeStudents = students.filter(s => s.active);
-  const presentCount = Array.from(attendance.values()).filter(a => a.status === 'obecny').length;
-  const absentCount = activeStudents.length - presentCount;
+  const attendanceValues = Array.from(attendance.values());
+  const presentCount = attendanceValues.filter(a => a.status === 'obecny').length;
+  const absentCount = attendanceValues.filter(a => a.status === 'nieobecny').length;
+  const expelledCount = attendanceValues.filter(a => a.status === 'wypisani').length;
 
   if (students.length === 0) {
     return (
@@ -236,6 +238,10 @@ export function AttendanceTable({
               <div className="flex items-center" data-testid="summary-absent">
                 <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
                 <span>Nieobecni: <span className="font-medium text-red-600">{absentCount}</span></span>
+              </div>
+              <div className="flex items-center" data-testid="summary-expelled">
+                <div className="w-3 h-3 bg-gray-500 rounded-full mr-2"></div>
+                <span>Wypisani: <span className="font-medium text-gray-700">{expelledCount}</span></span>
               </div>
             </div>
             <div className="text-sm text-gray-500" data-testid="text-last-saved">
