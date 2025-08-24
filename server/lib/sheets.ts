@@ -237,18 +237,34 @@ export async function getStudents(groupId?: string): Promise<Student[]> {
         }
       });
 
+      // Debug log before validation
+      if (i <= 3) { // Log first 3 students for debugging
+        console.log(`[DEBUG] Student ${i} for group ${groupId}:`, {
+          id: student.id,
+          first_name: student.first_name,
+          last_name: student.last_name,
+          group_id: student.group_id,
+          active: student.active,
+          original_active: row[headers.indexOf('active')]
+        });
+      }
+
       // Validate required fields
       if (student.id && student.first_name && student.last_name && student.group_id && student.active) {
         students.push(student as Student);
       }
     }
 
+    console.log(`[DEBUG] After validation for group ${groupId}: ${students.length} students passed`);
+
     // Filter by group if specified
     let filteredStudents = students;
     if (groupId) {
       const config = GROUPS_CONFIG[groupId];
       const sheetGroupId = config?.sheetGroupId || groupId;
+      console.log(`[DEBUG] Filtering ${groupId}: looking for group_id=${sheetGroupId}`);
       filteredStudents = students.filter(s => s.group_id === sheetGroupId);
+      console.log(`[DEBUG] After group filtering for ${groupId}: ${filteredStudents.length} students`);
     }
 
     // Sort by last_name then first_name using Polish locale
