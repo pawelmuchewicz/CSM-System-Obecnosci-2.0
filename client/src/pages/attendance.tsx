@@ -218,6 +218,16 @@ export default function AttendancePage() {
             attendance={attendance}
             onAttendanceChange={handleAttendanceChange}
             selectedDate={selectedDate}
+            selectedGroup={selectedGroup}
+            onNotesUpdate={(studentId, notes) => {
+              const currentItem = attendance.get(studentId);
+              if (currentItem) {
+                const newAttendance = new Map(attendance);
+                newAttendance.set(studentId, { ...currentItem, notes });
+                setAttendance(newAttendance);
+                setHasChanges(true);
+              }
+            }}
           />
         )}
       </main>

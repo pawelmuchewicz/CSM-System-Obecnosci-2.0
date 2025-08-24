@@ -5,20 +5,37 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoreVertical } from "lucide-react";
 import type { Student, AttendanceItem } from "@shared/schema";
+import { StudentDetailsModal } from './student-details-modal';
 
 interface AttendanceTableProps {
   students: Student[];
   attendance: Map<string, AttendanceItem>;
   onAttendanceChange: (studentId: string, status: 'obecny' | 'nieobecny') => void;
   selectedDate: string;
+  selectedGroup: string;
+  onNotesUpdate: (studentId: string, notes: string) => void;
 }
 
 export function AttendanceTable({
   students,
   attendance,
   onAttendanceChange,
-  selectedDate
+  selectedDate,
+  selectedGroup,
+  onNotesUpdate
 }: AttendanceTableProps) {
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleStudentClick = (student: Student) => {
+    setSelectedStudent(student);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedStudent(null);
+  };
   const presentCount = Array.from(attendance.values()).filter(a => a.status === 'obecny').length;
   const absentCount = students.length - presentCount;
 
@@ -126,6 +143,7 @@ export function AttendanceTable({
                       variant="ghost"
                       size="sm"
                       className="text-gray-400 hover:text-gray-600"
+                      onClick={() => handleStudentClick(student)}
                       aria-label={`Więcej opcji dla ${student.first_name} ${student.last_name}`}
                       data-testid={`button-options-${student.id}`}
                     >
@@ -157,6 +175,16 @@ export function AttendanceTable({
           </div>
         </div>
       </div>
+
+      <StudentDetailsModal
+        student={selectedStudent}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        selectedDate={selectedDate}
+        groupId={selectedGroup}
+        currentAttendance={selectedStudent ? attendance.get(selectedStudent.id) : undefined}
+        onNotesUpdate={onNotesUpdate}
+      />
     </div>
   );
 }

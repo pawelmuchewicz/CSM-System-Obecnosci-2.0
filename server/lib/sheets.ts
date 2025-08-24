@@ -304,11 +304,11 @@ export async function getAttendance(groupId: string, dateISO: string): Promise<{
     const sheets = await getSheets();
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Attendance!A1:D10000'
+      range: 'Attendance!A1:E10000' // Include notes column
     });
 
     const rows = response.data.values || [];
-    const attendanceMap = new Map<string, { status: string; updated_at: string }>();
+    const attendanceMap = new Map<string, { status: string; updated_at: string; notes?: string }>();
 
     // Process attendance records for this session
     for (let i = 1; i < rows.length; i++) {
@@ -317,10 +317,11 @@ export async function getAttendance(groupId: string, dateISO: string): Promise<{
         const studentId = row[1];
         const status = row[2] || 'absent';
         const updatedAt = row[3] || new Date().toISOString();
+        const notes = row[4] || '';
         
         // Keep only the latest record for each student
         if (!attendanceMap.has(studentId) || updatedAt > (attendanceMap.get(studentId)?.updated_at || '')) {
-          attendanceMap.set(studentId, { status, updated_at: updatedAt });
+          attendanceMap.set(studentId, { status, updated_at: updatedAt, notes });
         }
       }
     }
@@ -331,7 +332,8 @@ export async function getAttendance(groupId: string, dateISO: string): Promise<{
       return {
         student_id: student.id,
         status: attendance ? normalizeStatus(attendance.status) : 'nieobecny',
-        updated_at: attendance?.updated_at
+        updated_at: attendance?.updated_at,
+        notes: attendance?.notes || ''
       };
     });
 
@@ -378,13 +380,14 @@ export async function setAttendance(
       sessionId,
       item.student_id,
       item.status === 'obecny' ? 'present' : 'absent',
-      now
+      now,
+      item.notes || '' // Add notes as 5th column
     ]);
 
     if (newRows.length > 0) {
       await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: 'Attendance!A:D',
+        range: 'Attendance!A:E', // Extend to column E for notes
         valueInputOption: 'RAW',
         requestBody: {
           values: newRows
@@ -396,7 +399,8 @@ export async function setAttendance(
     const updated = validUpdates.map(item => ({
       student_id: item.student_id,
       status: item.status,
-      updated_at: now
+      updated_at: now,
+      notes: item.notes || ''
     }));
 
     return { session_id: sessionId, updated, conflicts };

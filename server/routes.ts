@@ -78,6 +78,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/attendance/notes - Save notes for specific student
+  app.post("/api/attendance/notes", async (req, res) => {
+    try {
+      const { groupId, date, student_id, notes } = req.body;
+      
+      if (!groupId || !date || !student_id) {
+        return res.status(400).json({ 
+          message: "Missing required fields: groupId, date, student_id" 
+        });
+      }
+
+      // Get current attendance to preserve status
+      const currentAttendance = await getAttendance(groupId, date);
+      const existingItem = currentAttendance.items.find(item => item.student_id === student_id);
+      
+      // Create updated item with notes
+      const updatedItem = {
+        student_id,
+        status: existingItem?.status || 'nieobecny',
+        updated_at: new Date().toISOString(),
+        notes: notes || ''
+      };
+
+      // Save the updated attendance item
+      const result = await setAttendance(groupId, date, [updatedItem]);
+      res.json({ success: true, item: updatedItem });
+    } catch (error) {
+      console.error("Error saving notes:", error);
+      res.status(502).json({ 
+        message: "Failed to save notes to Google Sheets",
+        hint: "Ensure the sheet is shared with the service account as Editor"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

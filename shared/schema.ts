@@ -20,6 +20,7 @@ export type AttendanceItem = {
   student_id: string;
   status: 'obecny' | 'nieobecny';
   updated_at?: string;
+  notes?: string;
 };
 
 export type AttendanceResponse = {
@@ -45,6 +46,7 @@ export const attendanceRequestSchema = z.object({
   items: z.array(z.object({
     student_id: z.string(),
     status: z.enum(['obecny', 'nieobecny']),
-    updated_at: z.string().optional()
+    updated_at: z.string().optional(),
+    notes: z.string().optional()
   }))
 });
