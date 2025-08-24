@@ -1,14 +1,22 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { BarChart3, Calendar } from "lucide-react";
+import { BarChart3, Calendar, LogOut, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuth, useLogout } from "@/hooks/useAuth";
 
 export function Navbar() {
   const [location] = useLocation();
+  const { user } = useAuth();
+  const logoutMutation = useLogout();
 
   const navItems = [
     { href: "/", label: "Obecność", icon: Calendar },
     { href: "/reports", label: "Raporty", icon: BarChart3 },
   ];
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
 
   return (
     <nav className="border-b bg-white">
@@ -41,6 +49,30 @@ export function Navbar() {
                 </Link>
               );
             })}
+          </div>
+
+          <div className="ml-auto flex items-center space-x-4">
+            {user && (
+              <>
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                  <User className="w-4 h-4" />
+                  <span>
+                    {user.firstName} {user.lastName}
+                    {user.isAdmin && <span className="ml-1 text-xs bg-primary text-primary-foreground px-1 rounded">Admin</span>}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLogout}
+                  disabled={logoutMutation.isPending}
+                  data-testid="button-logout"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  {logoutMutation.isPending ? 'Wylogowywanie...' : 'Wyloguj'}
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

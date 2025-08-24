@@ -1,14 +1,110 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { getGroups, getStudents, getAttendance, setAttendance, getInstructors, getInstructorGroups, getInstructorsForGroup, getAttendanceReport } from "./lib/sheets";
-import { attendanceRequestSchema } from "@shared/schema";
+import { attendanceRequestSchema, loginSchema, instructorsAuth, instructorGroupAssignments } from "@shared/schema";
+import { setupSession, requireAuth, optionalAuth, requireGroupAccess, hashPassword, verifyPassword, type AuthenticatedRequest } from "./auth";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // GET /api/groups
-  app.get("/api/groups", async (req, res) => {
+  // Setup session middleware
+  setupSession(app);
+
+  // === AUTHENTICATION ROUTES ===
+
+  // POST /api/auth/login
+  app.post("/api/auth/login", async (req, res) => {
     try {
-      const groups = await getGroups();
-      res.json({ groups });
+      const { username, password } = loginSchema.parse(req.body);
+
+      // Find user by username
+      const [user] = await db
+        .select()
+        .from(instructorsAuth)
+        .where(eq(instructorsAuth.username, username));
+
+      if (!user || !user.active) {
+        return res.status(401).json({ 
+          message: "Nieprawidłowa nazwa użytkownika lub hasło",
+          code: "INVALID_CREDENTIALS" 
+        });
+      }
+
+      // Verify password
+      const passwordValid = await verifyPassword(password, user.password);
+      if (!passwordValid) {
+        return res.status(401).json({ 
+          message: "Nieprawidłowa nazwa użytkownika lub hasło",
+          code: "INVALID_CREDENTIALS" 
+        });
+      }
+
+      // Set session
+      (req.session as any).userId = user.id;
+
+      // Get user's groups
+      const groupAssignments = await db
+        .select({ groupId: instructorGroupAssignments.groupId, role: instructorGroupAssignments.role })
+        .from(instructorGroupAssignments)
+        .where(eq(instructorGroupAssignments.instructorId, user.id));
+
+      res.json({ 
+        message: "Zalogowano pomyślnie",
+        user: {
+          id: user.id,
+          username: user.username,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          groupIds: groupAssignments.map(g => g.groupId),
+          isAdmin: groupAssignments.some(g => g.role === 'admin'),
+        }
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(400).json({ 
+        message: "Błąd podczas logowania",
+        code: "LOGIN_ERROR" 
+      });
+    }
+  });
+
+  // POST /api/auth/logout
+  app.post("/api/auth/logout", (req, res) => {
+    req.session?.destroy((err) => {
+      if (err) {
+        console.error("Logout error:", err);
+        return res.status(500).json({ 
+          message: "Błąd podczas wylogowywania",
+          code: "LOGOUT_ERROR" 
+        });
+      }
+      res.clearCookie('connect.sid');
+      res.json({ message: "Wylogowano pomyślnie" });
+    });
+  });
+
+  // GET /api/auth/me
+  app.get("/api/auth/me", requireAuth, async (req: AuthenticatedRequest, res) => {
+    res.json({ user: req.user });
+  });
+
+  // === PROTECTED ROUTES ===
+
+  // GET /api/groups (now requires authentication)
+  app.get("/api/groups", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const allGroups = await getGroups();
+      
+      // Filter groups based on user permissions
+      let filteredGroups = allGroups;
+      if (!req.user?.isAdmin) {
+        filteredGroups = allGroups.filter(group => 
+          req.user?.groupIds.includes(group.id)
+        );
+      }
+      
+      res.json({ groups: filteredGroups });
     } catch (error) {
       console.error("Error fetching groups:", error);
       res.status(502).json({ 
@@ -18,8 +114,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/students?groupId=G1&showInactive=true
-  app.get("/api/students", async (req, res) => {
+  // GET /api/students?groupId=G1&showInactive=true (now requires auth and group access)
+  app.get("/api/students", requireAuth, requireGroupAccess, async (req: AuthenticatedRequest, res) => {
     try {
       const groupId = req.query.groupId as string;
       const showInactive = req.query.showInactive === 'true';
@@ -35,8 +131,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/attendance?groupId=G1&date=2025-01-01
-  app.get("/api/attendance", async (req, res) => {
+  // GET /api/attendance?groupId=G1&date=2025-01-01 (now requires auth and group access)
+  app.get("/api/attendance", requireAuth, requireGroupAccess, async (req: AuthenticatedRequest, res) => {
     try {
       const { groupId, date } = req.query;
       
@@ -57,8 +153,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/attendance/exists - Check if attendance already exists
-  app.get("/api/attendance/exists", async (req, res) => {
+  // GET /api/attendance/exists - Check if attendance already exists (requires auth and group access)
+  app.get("/api/attendance/exists", requireAuth, requireGroupAccess, async (req: AuthenticatedRequest, res) => {
     try {
       const { groupId, date } = req.query;
       
@@ -80,8 +176,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/attendance
-  app.post("/api/attendance", async (req, res) => {
+  // POST /api/attendance (requires auth and group access)
+  app.post("/api/attendance", requireAuth, requireGroupAccess, async (req: AuthenticatedRequest, res) => {
     try {
       const validation = attendanceRequestSchema.safeParse(req.body);
       if (!validation.success) {

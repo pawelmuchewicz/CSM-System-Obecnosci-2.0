@@ -6,15 +6,45 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Navbar } from "@/components/navbar";
 import AttendancePage from "@/pages/attendance";
 import { ReportsPage } from "@/pages/reports";
+import { LoginPage } from "@/pages/login";
 import NotFound from "@/pages/not-found";
+import { useAuth } from "@/hooks/useAuth";
 
 function Router() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Ładowanie...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated, show login page for all routes
+  if (!isAuthenticated) {
+    return (
+      <Switch>
+        <Route path="/login" component={LoginPage} />
+        <Route component={LoginPage} />
+      </Switch>
+    );
+  }
+
+  // If authenticated, show the main app
   return (
-    <Switch>
-      <Route path="/" component={AttendancePage} />
-      <Route path="/reports" component={ReportsPage} />
-      <Route component={NotFound} />
-    </Switch>
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <Switch>
+        <Route path="/" component={AttendancePage} />
+        <Route path="/reports" component={ReportsPage} />
+        <Route component={NotFound} />
+      </Switch>
+    </div>
   );
 }
 
@@ -22,10 +52,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <div className="min-h-screen bg-gray-50">
-          <Navbar />
-          <Router />
-        </div>
+        <Router />
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
