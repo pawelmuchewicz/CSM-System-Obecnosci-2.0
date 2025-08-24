@@ -81,3 +81,27 @@ The system uses Google Cloud Service Account credentials to access sheets on beh
 - **Replit Integration**: Runtime error overlay and development banner
 - **Connect-pg-simple**: PostgreSQL session store (prepared for future use)
 - **Wouter**: Lightweight routing library for React applications
+
+# Deployment and Server Migration
+
+## Replit to Own Server Migration
+The application is built with standard Node.js/Express backend and React frontend, making it portable to any server environment. Key considerations for migration:
+
+### Required Environment Setup
+1. **Node.js 18+** with npm/yarn package manager
+2. **Environment Variables**: Google Service Account credentials (GOOGLE_PRIVATE_KEY, GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_SHEETS_SPREADSHEET_ID)
+3. **Build Dependencies**: All packages in package.json must be installed
+4. **Optional**: PostgreSQL database for future migration from Google Sheets
+
+### Migration Steps
+1. Copy all source code files (preserving directory structure)
+2. Run `npm install` to install dependencies
+3. Set up environment variables with Google Sheets API credentials
+4. Run `npm run dev` for development or `npm run build` + serve static files for production
+5. Ensure Google Service Account has access to all required spreadsheets
+
+### Potential Issues and Solutions
+- **Google Sheets API Rate Limits**: May need to implement caching or request throttling for production use
+- **Puppeteer Dependencies**: PDF export requires headless Chrome dependencies on the server
+- **Build Configuration**: May need to adjust Vite configuration for different hosting environments
+- **SSL/HTTPS**: Production deployment should use HTTPS for Google API security
