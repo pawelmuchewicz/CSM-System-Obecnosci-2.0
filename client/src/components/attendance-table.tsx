@@ -86,6 +86,7 @@ export function AttendanceTable({
             <TableRow>
               <TableHead className="text-left">Imię</TableHead>
               <TableHead className="text-left">Nazwisko</TableHead>
+              <TableHead className="text-center">Klasa</TableHead>
               <TableHead className="text-center">Status</TableHead>
               <TableHead className="text-center">Akcje</TableHead>
             </TableRow>
@@ -120,6 +121,15 @@ export function AttendanceTable({
                   <TableCell data-testid={`text-lastname-${student.id}`}>
                     <span className={isPresent && !isInactive ? 'text-green-700 font-semibold' : ''}>
                       {student.last_name}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-center" data-testid={`text-class-${student.id}`}>
+                    <span className={`text-sm font-medium px-2 py-1 rounded-md ${
+                      isInactive 
+                        ? 'bg-gray-100 text-gray-500' 
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {student.class || '--'}
                     </span>
                   </TableCell>
                   <TableCell className="text-center">
