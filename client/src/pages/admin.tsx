@@ -1176,6 +1176,26 @@ function SheetsConfigTab() {
               <DialogHeader>
                 <DialogTitle>Dodaj konfigurację arkusza</DialogTitle>
               </DialogHeader>
+              
+              {/* Reminder for copied sheets */}
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                <div className="flex items-start">
+                  <svg className="h-5 w-5 text-blue-400 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  <div className="text-sm">
+                    <p className="font-medium text-blue-800 mb-1">📋 Skopiowałeś arkusz?</p>
+                    <p className="text-blue-700 text-xs leading-relaxed">
+                      Sprawdź czy zmieniłeś w arkuszu Google Sheets:
+                      <br />• <strong>Nazwę pliku</strong> (tytuł arkusza)
+                      <br />• <strong>Kolumnę group_id</strong> w zakładce Students
+                      <br />• <strong>Kolumnę class</strong> w zakładce Students
+                      <br />Jeśli nie - wróć i zmień, lub użyj pola "Sheet Group ID" poniżej.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="groupId">ID Grupy *</Label>
