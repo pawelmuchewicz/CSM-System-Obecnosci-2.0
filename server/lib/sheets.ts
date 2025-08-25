@@ -48,7 +48,7 @@ function setCache<T>(key: string, data: T): void {
   console.log(`Cache SET for ${key}`);
 }
 
-function clearCache(pattern?: string): void {
+export function clearCache(pattern?: string): void {
   if (pattern) {
     const keys = Array.from(cache.keys());
     for (const key of keys) {

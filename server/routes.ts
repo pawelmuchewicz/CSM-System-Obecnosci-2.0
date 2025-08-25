@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { getGroups, getStudents, getAttendance, setAttendance, getInstructors, getInstructorGroups, getInstructorsForGroup, getAttendanceReport, getUsersFromSheets, syncUserToSheets, syncUsersToSheets, removeUserFromSheets } from "./lib/sheets";
+import { getGroups, getStudents, getAttendance, setAttendance, getInstructors, getInstructorGroups, getInstructorsForGroup, getAttendanceReport, getUsersFromSheets, syncUserToSheets, syncUsersToSheets, removeUserFromSheets, clearCache } from "./lib/sheets";
 import { attendanceRequestSchema, loginSchema, instructorsAuth, instructorGroupAssignments, registerInstructorSchema, updateUserStatusSchema, assignGroupSchema, groupsConfig, createGroupConfigSchema, updateGroupConfigSchema } from "@shared/schema";
 import { setupSession, requireAuth, optionalAuth, requireGroupAccess, hashPassword, verifyPassword, type AuthenticatedRequest } from "./auth";
 import { db } from "./db";
@@ -1540,6 +1540,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updatedAt: groupsConfig.updatedAt,
         });
         
+      // Clear groups cache to refresh groups list
+      clearCache('groups');
+        
       res.status(201).json({ 
         message: "Konfiguracja grupy została utworzona",
         config: newConfig
@@ -1600,6 +1603,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Clear groups cache to refresh groups list
+      clearCache('groups');
+      
       res.json({
         message: "Konfiguracja grupy została zaktualizowana",
         config: updatedConfig
@@ -1653,6 +1659,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           code: "CONFIG_NOT_FOUND"
         });
       }
+      
+      // Clear groups cache to refresh groups list
+      clearCache('groups');
       
       res.json({
         message: "Konfiguracja grupy została usunięta",
