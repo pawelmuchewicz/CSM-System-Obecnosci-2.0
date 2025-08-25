@@ -1014,9 +1014,22 @@ function SheetsConfigTab() {
     },
     onError: (error: any) => {
       console.error('Error creating config:', error);
+      
+      // Try to parse error message from response
+      let errorMessage = "Nie udało się utworzyć konfiguracji arkusza";
+      if (error.message) {
+        try {
+          const errorData = JSON.parse(error.message);
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          // If not JSON, use the error message as is
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Błąd",
-        description: "Nie udało się utworzyć konfiguracji arkusza",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -1174,7 +1187,7 @@ function SheetsConfigTab() {
                     data-testid="input-group-id"
                   />
                   <p className="text-sm text-muted-foreground mt-1">
-                    Unikalny identyfikator grupy używany w systemie
+                    Unikalny identyfikator grupy używany w systemie (musi być różny od istniejących)
                   </p>
                 </div>
                 <div>
