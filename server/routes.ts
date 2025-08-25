@@ -19,7 +19,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Find user by username
       const [user] = await db
-        .select()
+        .select({
+          id: instructorsAuth.id,
+          username: instructorsAuth.username,
+          password: instructorsAuth.password,
+          firstName: instructorsAuth.firstName,
+          lastName: instructorsAuth.lastName,
+          email: instructorsAuth.email,
+          role: instructorsAuth.role,
+          status: instructorsAuth.status,
+          active: instructorsAuth.active,
+          groupIds: instructorsAuth.groupIds,
+        })
         .from(instructorsAuth)
         .where(eq(instructorsAuth.username, username));
 
@@ -42,11 +53,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Set session
       (req.session as any).userId = user.id;
 
-      // Get user's groups
-      const groupAssignments = await db
-        .select({ groupId: instructorGroupAssignments.groupId, role: instructorGroupAssignments.role })
-        .from(instructorGroupAssignments)
-        .where(eq(instructorGroupAssignments.instructorId, user.id));
+      // Get user's groups from the groupIds column
+      const groupIds = user.groupIds || [];
 
       // Get user's permissions and role info
       const userRole = (user.role || 'instructor') as 'owner' | 'reception' | 'instructor';
@@ -98,7 +106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: user.email,
           role: userRole,
           status: user.status || 'active',
-          groupIds: groupAssignments.map(g => g.groupId),
+          groupIds,
           isAdmin: userRole === 'owner' || userRole === 'reception',
           permissions,
         }
