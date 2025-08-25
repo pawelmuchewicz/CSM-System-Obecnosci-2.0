@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { getGroups, getStudents, getAttendance, setAttendance, getInstructors, getInstructorGroups, getInstructorsForGroup, getAttendanceReport, getUsersFromSheets, syncUserToSheets, syncUsersToSheets, removeUserFromSheets } from "./lib/sheets";
-import { attendanceRequestSchema, loginSchema, instructorsAuth, instructorGroupAssignments, registerInstructorSchema, updateUserStatusSchema, assignGroupSchema } from "@shared/schema";
+import { attendanceRequestSchema, loginSchema, instructorsAuth, instructorGroupAssignments, registerInstructorSchema, updateUserStatusSchema, assignGroupSchema, groupsConfig, createGroupConfigSchema, updateGroupConfigSchema } from "@shared/schema";
 import { setupSession, requireAuth, optionalAuth, requireGroupAccess, hashPassword, verifyPassword, type AuthenticatedRequest } from "./auth";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -1456,6 +1456,213 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         message: "Błąd podczas usuwania użytkownika",
         code: "USER_DELETE_ERROR"
+      });
+    }
+  });
+
+  // === GROUPS CONFIGURATION ROUTES ===
+  
+  // GET /api/admin/groups-config - List all groups configurations (reception/owner only)
+  app.get("/api/admin/groups-config", requireAuth, async (req: AuthenticatedRequest, res) => {
+    if (!req.user?.permissions.canManageUsers) {
+      return res.status(403).json({ 
+        message: "Brak uprawnień do zarządzania konfiguracją arkuszy",
+        code: "INSUFFICIENT_PERMISSIONS" 
+      });
+    }
+    
+    try {
+      const configs = await db
+        .select({
+          id: groupsConfig.id,
+          groupId: groupsConfig.groupId,
+          name: groupsConfig.name,
+          spreadsheetId: groupsConfig.spreadsheetId,
+          sheetGroupId: groupsConfig.sheetGroupId,
+          active: groupsConfig.active,
+          createdAt: groupsConfig.createdAt,
+          updatedAt: groupsConfig.updatedAt,
+        })
+        .from(groupsConfig)
+        .orderBy(groupsConfig.name);
+        
+      res.json({ configs });
+    } catch (error) {
+      console.error("Error fetching groups configurations:", error);
+      res.status(500).json({ 
+        message: "Błąd podczas pobierania konfiguracji grup",
+        code: "FETCH_CONFIGS_ERROR" 
+      });
+    }
+  });
+  
+  // POST /api/admin/groups-config - Create new group configuration (reception/owner only)
+  app.post("/api/admin/groups-config", requireAuth, async (req: AuthenticatedRequest, res) => {
+    if (!req.user?.permissions.canManageUsers) {
+      return res.status(403).json({ 
+        message: "Brak uprawnień do zarządzania konfiguracją arkuszy",
+        code: "INSUFFICIENT_PERMISSIONS" 
+      });
+    }
+    
+    try {
+      const configData = createGroupConfigSchema.parse(req.body);
+      
+      // Check if groupId already exists
+      const [existingConfig] = await db
+        .select({ id: groupsConfig.id })
+        .from(groupsConfig)
+        .where(eq(groupsConfig.groupId, configData.groupId));
+        
+      if (existingConfig) {
+        return res.status(400).json({ 
+          message: "Konfiguracja dla tej grupy już istnieje",
+          code: "GROUP_CONFIG_EXISTS" 
+        });
+      }
+      
+      // Create new configuration
+      const [newConfig] = await db
+        .insert(groupsConfig)
+        .values({
+          ...configData,
+          createdBy: req.user.id,
+          updatedBy: req.user.id,
+        })
+        .returning({
+          id: groupsConfig.id,
+          groupId: groupsConfig.groupId,
+          name: groupsConfig.name,
+          spreadsheetId: groupsConfig.spreadsheetId,
+          sheetGroupId: groupsConfig.sheetGroupId,
+          active: groupsConfig.active,
+          createdAt: groupsConfig.createdAt,
+          updatedAt: groupsConfig.updatedAt,
+        });
+        
+      res.status(201).json({ 
+        message: "Konfiguracja grupy została utworzona",
+        config: newConfig
+      });
+    } catch (error) {
+      console.error("Error creating group configuration:", error);
+      res.status(400).json({ 
+        message: "Błąd podczas tworzenia konfiguracji grupy",
+        code: "CREATE_CONFIG_ERROR" 
+      });
+    }
+  });
+  
+  // PUT /api/admin/groups-config/:id - Update group configuration (reception/owner only)
+  app.put("/api/admin/groups-config/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+    if (!req.user?.permissions.canManageUsers) {
+      return res.status(403).json({ 
+        message: "Brak uprawnień do zarządzania konfiguracją arkuszy",
+        code: "INSUFFICIENT_PERMISSIONS" 
+      });
+    }
+    
+    try {
+      const configId = parseInt(req.params.id);
+      const updateData = updateGroupConfigSchema.parse(req.body);
+      
+      if (!configId) {
+        return res.status(400).json({
+          message: "Nieprawidłowe ID konfiguracji",
+          code: "INVALID_CONFIG_ID"
+        });
+      }
+      
+      // Update configuration
+      const [updatedConfig] = await db
+        .update(groupsConfig)
+        .set({
+          ...updateData,
+          updatedBy: req.user.id,
+          updatedAt: new Date()
+        })
+        .where(eq(groupsConfig.id, configId))
+        .returning({
+          id: groupsConfig.id,
+          groupId: groupsConfig.groupId,
+          name: groupsConfig.name,
+          spreadsheetId: groupsConfig.spreadsheetId,
+          sheetGroupId: groupsConfig.sheetGroupId,
+          active: groupsConfig.active,
+          createdAt: groupsConfig.createdAt,
+          updatedAt: groupsConfig.updatedAt,
+        });
+        
+      if (!updatedConfig) {
+        return res.status(404).json({
+          message: "Konfiguracja grupy nie została znaleziona",
+          code: "CONFIG_NOT_FOUND"
+        });
+      }
+      
+      res.json({
+        message: "Konfiguracja grupy została zaktualizowana",
+        config: updatedConfig
+      });
+    } catch (error) {
+      console.error("Error updating group configuration:", error);
+      res.status(500).json({
+        message: "Błąd podczas aktualizacji konfiguracji grupy",
+        code: "UPDATE_CONFIG_ERROR"
+      });
+    }
+  });
+  
+  // DELETE /api/admin/groups-config/:id - Delete group configuration (reception/owner only)
+  app.delete("/api/admin/groups-config/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+    if (!req.user?.permissions.canManageUsers) {
+      return res.status(403).json({ 
+        message: "Brak uprawnień do zarządzania konfiguracją arkuszy",
+        code: "INSUFFICIENT_PERMISSIONS" 
+      });
+    }
+    
+    try {
+      const configId = parseInt(req.params.id);
+      
+      if (!configId) {
+        return res.status(400).json({
+          message: "Nieprawidłowe ID konfiguracji",
+          code: "INVALID_CONFIG_ID"
+        });
+      }
+      
+      // Delete configuration (soft delete by setting active = false)
+      const [deletedConfig] = await db
+        .update(groupsConfig)
+        .set({
+          active: false,
+          updatedBy: req.user.id,
+          updatedAt: new Date()
+        })
+        .where(eq(groupsConfig.id, configId))
+        .returning({
+          id: groupsConfig.id,
+          groupId: groupsConfig.groupId,
+          name: groupsConfig.name
+        });
+        
+      if (!deletedConfig) {
+        return res.status(404).json({
+          message: "Konfiguracja grupy nie została znaleziona",
+          code: "CONFIG_NOT_FOUND"
+        });
+      }
+      
+      res.json({
+        message: "Konfiguracja grupy została usunięta",
+        config: deletedConfig
+      });
+    } catch (error) {
+      console.error("Error deleting group configuration:", error);
+      res.status(500).json({
+        message: "Błąd podczas usuwania konfiguracji grupy",
+        code: "DELETE_CONFIG_ERROR"
       });
     }
   });

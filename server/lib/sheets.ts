@@ -1,5 +1,8 @@
 import { google } from 'googleapis';
 import type { Group, Student, AttendanceItem, Instructor, InstructorGroup, AttendanceReportFilters, AttendanceReportResponse, AttendanceReportItem, StudentStats, GroupStats, AttendanceStats } from '@shared/schema';
+import { db } from '../db';
+import { groupsConfig } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 
 // Validate required environment variables
 if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
@@ -127,13 +130,31 @@ const GROUPS_CONFIG: Record<string, { name: string; spreadsheetId: string; sheet
   }
 };
 
-// Helper to get spreadsheet ID for a group
-function getSpreadsheetId(groupId: string): string {
-  const config = GROUPS_CONFIG[groupId];
-  if (!config) {
+// Helper to get spreadsheet ID for a group from database
+async function getSpreadsheetId(groupId: string): Promise<string> {
+  try {
+    // Try to get from database first
+    const [config] = await db
+      .select({ spreadsheetId: groupsConfig.spreadsheetId })
+      .from(groupsConfig)
+      .where(eq(groupsConfig.groupId, groupId))
+      .limit(1);
+    
+    if (config) {
+      return config.spreadsheetId;
+    }
+    
+    // Fallback to hardcoded configuration
+    const hardcodedConfig = GROUPS_CONFIG[groupId];
+    if (hardcodedConfig) {
+      return hardcodedConfig.spreadsheetId;
+    }
+    
     throw new Error(`Unknown group: ${groupId}`);
+  } catch (error) {
+    console.error(`Error getting spreadsheet ID for group ${groupId}:`, error);
+    throw error;
   }
-  return config.spreadsheetId;
 }
 
 // Helper function to get authenticated sheets client
@@ -207,7 +228,28 @@ export async function getGroups(): Promise<Group[]> {
   if (cached) return cached;
 
   try {
-    // Return groups from configuration
+    // Try to get from database first
+    const dbConfigs = await db
+      .select({
+        id: groupsConfig.groupId,
+        name: groupsConfig.name,
+        spreadsheetId: groupsConfig.spreadsheetId
+      })
+      .from(groupsConfig)
+      .where(eq(groupsConfig.active, true))
+      .orderBy(groupsConfig.name);
+    
+    if (dbConfigs.length > 0) {
+      const groups = dbConfigs.map(config => ({
+        id: config.id,
+        name: config.name,
+        spreadsheetId: config.spreadsheetId
+      }));
+      setCache(cacheKey, groups);
+      return groups;
+    }
+    
+    // Fallback to hardcoded configuration
     const groups = Object.entries(GROUPS_CONFIG).map(([id, config]) => ({
       id,
       name: config.name,
@@ -218,13 +260,14 @@ export async function getGroups(): Promise<Group[]> {
     return groups;
   } catch (error) {
     console.error('Error fetching groups:', error);
-    const fallbackGroups = [{
-      id: 'TTI',
-      name: 'TTI',
-      spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID!
-    }];
-    setCache(cacheKey, fallbackGroups);
-    return fallbackGroups;
+    // Fallback to hardcoded groups if database fails
+    const groups = Object.entries(GROUPS_CONFIG).map(([id, config]) => ({
+      id,
+      name: config.name,
+      spreadsheetId: config.spreadsheetId
+    }));
+    setCache(cacheKey, groups);
+    return groups;
   }
 }
 
@@ -240,7 +283,7 @@ export async function getStudents(groupId?: string, showInactive: boolean = fals
 
   try {
     const sheets = await getSheets();
-    const spreadsheetId = getSpreadsheetId(groupId);
+    const spreadsheetId = await getSpreadsheetId(groupId);
     
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -366,7 +409,7 @@ export async function findOrCreateSession(groupId: string, dateISO: string): Pro
   try {
     const sheets = await getSheets();
     const sessionId = buildSessionId(groupId, dateISO);
-    const spreadsheetId = getSpreadsheetId(groupId);
+    const spreadsheetId = await getSpreadsheetId(groupId);
 
     // Check if session exists
     const response = await sheets.spreadsheets.values.get({
@@ -405,7 +448,7 @@ export async function getAttendance(groupId: string, dateISO: string): Promise<{
   try {
     const sessionId = await findOrCreateSession(groupId, dateISO);
     const students = await getStudents(groupId);
-    const spreadsheetId = getSpreadsheetId(groupId);
+    const spreadsheetId = await getSpreadsheetId(groupId);
 
     const sheets = await getSheets();
     const response = await sheets.spreadsheets.values.get({
@@ -470,7 +513,7 @@ export async function setAttendance(
 ): Promise<{ session_id: string; updated: AttendanceItem[]; conflicts: AttendanceItem[] }> {
   try {
     const sessionId = await findOrCreateSession(groupId, dateISO);
-    const spreadsheetId = getSpreadsheetId(groupId);
+    const spreadsheetId = await getSpreadsheetId(groupId);
     const sheets = await getSheets();
 
     // Get current attendance to check for conflicts
@@ -751,7 +794,7 @@ export async function getInstructorsForGroup(groupId: string): Promise<(Instruct
     }
     
     const sheets = await getSheets();
-    const spreadsheetId = getSpreadsheetId(groupId);
+    const spreadsheetId = await getSpreadsheetId(groupId);
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -960,7 +1003,7 @@ export async function getAttendanceReport(filters: AttendanceReportFilters): Pro
 async function getGroupSessions(groupId: string, dateFrom?: string, dateTo?: string): Promise<{date: string}[]> {
   try {
     const sheets = await getSheets();
-    const spreadsheetId = getSpreadsheetId(groupId);
+    const spreadsheetId = await getSpreadsheetId(groupId);
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,

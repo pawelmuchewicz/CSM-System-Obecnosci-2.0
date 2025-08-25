@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserCheck, UserX, Settings, Plus, RefreshCw, Download, Upload, AlertCircle, Edit2 as Edit, Trash2 } from "lucide-react";
+import { Users, UserCheck, UserX, Settings, Plus, RefreshCw, Download, Upload, AlertCircle, Edit2 as Edit, Trash2, Sheet, ExternalLink } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -47,6 +47,17 @@ interface SheetUser {
   role: string;
   status: string;
   active: boolean;
+}
+
+interface GroupConfig {
+  id: number;
+  groupId: string;
+  name: string;
+  spreadsheetId: string;
+  sheetGroupId?: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function AdminPage() {
@@ -132,7 +143,7 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="pending-users" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="pending-users" data-testid="tab-pending-users">
             <UserCheck className="w-4 h-4 mr-2" />
             Oczekujące konta
@@ -140,6 +151,10 @@ export default function AdminPage() {
           <TabsTrigger value="all-users" data-testid="tab-all-users">
             <Users className="w-4 h-4 mr-2" />
             Wszyscy użytkownicy
+          </TabsTrigger>
+          <TabsTrigger value="sheets-config" data-testid="tab-sheets-config">
+            <Sheet className="w-4 h-4 mr-2" />
+            Arkusze Google
           </TabsTrigger>
           <TabsTrigger value="settings" data-testid="tab-settings">
             <Settings className="w-4 h-4 mr-2" />
@@ -216,6 +231,10 @@ export default function AdminPage() {
 
         <TabsContent value="all-users">
           <AllUsersTab />
+        </TabsContent>
+
+        <TabsContent value="sheets-config">
+          <SheetsConfigTab />
         </TabsContent>
 
         <TabsContent value="settings">
@@ -946,5 +965,432 @@ function AllUsersTab() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// Component for managing Google Sheets configurations
+function SheetsConfigTab() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingConfig, setEditingConfig] = useState<GroupConfig | null>(null);
+
+  // Form states
+  const [groupId, setGroupId] = useState('');
+  const [name, setName] = useState('');
+  const [spreadsheetId, setSpreadsheetId] = useState('');
+  const [sheetGroupId, setSheetGroupId] = useState('');
+
+  const { data: configs, isLoading } = useQuery<{configs: GroupConfig[]}>({
+    queryKey: ['/api/admin/groups-config'],
+    retry: false,
+  });
+
+  // Create new configuration mutation
+  const createConfigMutation = useMutation({
+    mutationFn: async (data: {groupId: string; name: string; spreadsheetId: string; sheetGroupId?: string}) => {
+      const response = await apiRequest('/api/admin/groups-config', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/groups-config'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/groups'] }); // Refresh groups cache
+      toast({
+        title: "Sukces",
+        description: "Konfiguracja arkusza została utworzona",
+      });
+      setIsAddDialogOpen(false);
+      resetForm();
+    },
+    onError: (error: any) => {
+      console.error('Error creating config:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się utworzyć konfiguracji arkusza",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update configuration mutation
+  const updateConfigMutation = useMutation({
+    mutationFn: async ({id, data}: {id: number; data: Partial<GroupConfig>}) => {
+      const response = await apiRequest(`/api/admin/groups-config/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/groups-config'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/groups'] }); // Refresh groups cache
+      toast({
+        title: "Sukces",
+        description: "Konfiguracja arkusza została zaktualizowana",
+      });
+      setIsEditDialogOpen(false);
+      setEditingConfig(null);
+      resetForm();
+    },
+    onError: (error: any) => {
+      console.error('Error updating config:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się zaktualizować konfiguracji arkusza",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete configuration mutation
+  const deleteConfigMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest(`/api/admin/groups-config/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/groups-config'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/groups'] }); // Refresh groups cache
+      toast({
+        title: "Sukces",
+        description: "Konfiguracja arkusza została usunięta",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Error deleting config:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się usunąć konfiguracji arkusza",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetForm = () => {
+    setGroupId('');
+    setName('');
+    setSpreadsheetId('');
+    setSheetGroupId('');
+  };
+
+  const handleAddConfig = () => {
+    if (!groupId.trim() || !name.trim() || !spreadsheetId.trim()) {
+      toast({
+        title: "Błąd",
+        description: "Wszystkie pola poza 'Sheet Group ID' są wymagane",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createConfigMutation.mutate({
+      groupId: groupId.trim(),
+      name: name.trim(),
+      spreadsheetId: spreadsheetId.trim(),
+      sheetGroupId: sheetGroupId.trim() || undefined,
+    });
+  };
+
+  const handleEditConfig = (config: GroupConfig) => {
+    setEditingConfig(config);
+    setGroupId(config.groupId);
+    setName(config.name);
+    setSpreadsheetId(config.spreadsheetId);
+    setSheetGroupId(config.sheetGroupId || '');
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateConfig = () => {
+    if (!editingConfig) return;
+    
+    if (!name.trim() || !spreadsheetId.trim()) {
+      toast({
+        title: "Błąd",
+        description: "Nazwa i ID arkusza są wymagane",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateConfigMutation.mutate({
+      id: editingConfig.id,
+      data: {
+        name: name.trim(),
+        spreadsheetId: spreadsheetId.trim(),
+        sheetGroupId: sheetGroupId.trim() || undefined,
+      }
+    });
+  };
+
+  const handleDeleteConfig = (id: number) => {
+    if (confirm('Czy na pewno chcesz usunąć tę konfigurację arkusza?')) {
+      deleteConfigMutation.mutate(id);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <span>Konfiguracja arkuszy Google Sheets</span>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-sheet-config">
+                <Plus className="w-4 h-4 mr-2" />
+                Dodaj arkusz
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Dodaj konfigurację arkusza</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="groupId">ID Grupy *</Label>
+                  <Input
+                    id="groupId"
+                    value={groupId}
+                    onChange={(e) => setGroupId(e.target.value)}
+                    placeholder="np. TTI, HipHop, Sp10"
+                    data-testid="input-group-id"
+                  />
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Unikalny identyfikator grupy używany w systemie
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="name">Nazwa grupy *</Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Nazwa wyświetlana grupy"
+                    data-testid="input-name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="spreadsheetId">ID arkusza Google Sheets *</Label>
+                  <Input
+                    id="spreadsheetId"
+                    value={spreadsheetId}
+                    onChange={(e) => setSpreadsheetId(e.target.value)}
+                    placeholder="ID z URL arkusza Google Sheets"
+                    data-testid="input-spreadsheet-id"
+                  />
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Znajdziesz to w URL: docs.google.com/spreadsheets/d/<strong>ID_ARKUSZA</strong>/edit
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="sheetGroupId">Sheet Group ID</Label>
+                  <Input
+                    id="sheetGroupId"
+                    value={sheetGroupId}
+                    onChange={(e) => setSheetGroupId(e.target.value)}
+                    placeholder="Opcjonalny identyfikator grupy w arkuszu"
+                    data-testid="input-sheet-group-id"
+                  />
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setIsAddDialogOpen(false);
+                      resetForm();
+                    }}
+                  >
+                    Anuluj
+                  </Button>
+                  <Button 
+                    onClick={handleAddConfig}
+                    disabled={createConfigMutation.isPending}
+                    data-testid="button-save-config"
+                  >
+                    {createConfigMutation.isPending && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />}
+                    Zapisz
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </CardTitle>
+        <p className="text-sm text-muted-foreground mt-2">
+          Zarządzaj konfiguracją arkuszy Google Sheets dla różnych grup w systemie. 
+          Te ustawienia będą używane po przeniesieniu aplikacji na nowy serwer.
+        </p>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : configs?.configs?.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Sheet className="mx-auto w-12 h-12 mb-4" />
+            <p>Brak skonfigurowanych arkuszy</p>
+            <p className="text-sm mt-2">Dodaj pierwszy arkusz, aby rozpocząć konfigurację</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {configs?.configs?.map((config) => (
+              <div 
+                key={config.id} 
+                className={`border rounded-lg p-4 ${!config.active ? 'opacity-60 bg-gray-50' : ''}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2 flex-1">
+                    <div className="flex items-center space-x-3">
+                      <h3 className="font-medium text-lg">{config.name}</h3>
+                      <Badge variant="outline" data-testid={`badge-group-${config.groupId}`}>
+                        {config.groupId}
+                      </Badge>
+                      {!config.active && (
+                        <Badge variant="destructive">Usunięte</Badge>
+                      )}
+                    </div>
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium">ID arkusza:</span>
+                        <code className="bg-gray-100 px-2 py-1 rounded text-xs">
+                          {config.spreadsheetId}
+                        </code>
+                        <a
+                          href={`https://docs.google.com/spreadsheets/d/${config.spreadsheetId}/edit`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </div>
+                      {config.sheetGroupId && (
+                        <div>
+                          <span className="font-medium">Sheet Group ID:</span> {config.sheetGroupId}
+                        </div>
+                      )}
+                      <div>
+                        <span className="font-medium">Utworzone:</span> {new Date(config.createdAt).toLocaleDateString('pl-PL')}
+                      </div>
+                      {config.updatedAt !== config.createdAt && (
+                        <div>
+                          <span className="font-medium">Aktualizowane:</span> {new Date(config.updatedAt).toLocaleDateString('pl-PL')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {config.active && (
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEditConfig(config)}
+                        data-testid={`button-edit-config-${config.id}`}
+                      >
+                        <Edit className="w-4 h-4 mr-1" />
+                        Edytuj
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteConfig(config.id)}
+                        disabled={deleteConfigMutation.isPending}
+                        data-testid={`button-delete-config-${config.id}`}
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Usuń
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edytuj konfigurację arkusza</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-groupId">ID Grupy</Label>
+                <Input
+                  id="edit-groupId"
+                  value={groupId}
+                  disabled
+                  className="bg-gray-100"
+                  data-testid="input-edit-group-id"
+                />
+                <p className="text-sm text-muted-foreground mt-1">
+                  ID grupy nie można zmieniać
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="edit-name">Nazwa grupy *</Label>
+                <Input
+                  id="edit-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Nazwa wyświetlana grupy"
+                  data-testid="input-edit-name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-spreadsheetId">ID arkusza Google Sheets *</Label>
+                <Input
+                  id="edit-spreadsheetId"
+                  value={spreadsheetId}
+                  onChange={(e) => setSpreadsheetId(e.target.value)}
+                  placeholder="ID z URL arkusza Google Sheets"
+                  data-testid="input-edit-spreadsheet-id"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-sheetGroupId">Sheet Group ID</Label>
+                <Input
+                  id="edit-sheetGroupId"
+                  value={sheetGroupId}
+                  onChange={(e) => setSheetGroupId(e.target.value)}
+                  placeholder="Opcjonalny identyfikator grupy w arkuszu"
+                  data-testid="input-edit-sheet-group-id"
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsEditDialogOpen(false);
+                    setEditingConfig(null);
+                    resetForm();
+                  }}
+                >
+                  Anuluj
+                </Button>
+                <Button 
+                  onClick={handleUpdateConfig}
+                  disabled={updateConfigMutation.isPending}
+                  data-testid="button-update-config"
+                >
+                  {updateConfigMutation.isPending && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />}
+                  Zapisz zmiany
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
   );
 }

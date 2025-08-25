@@ -72,6 +72,20 @@ export type InstructorGroup = {
   end_date?: string;
 };
 
+// Groups configuration table for Google Sheets integration
+export const groupsConfig = pgTable("groups_config", {
+  id: serial("id").primaryKey(),
+  groupId: varchar("group_id", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 100 }).notNull(),
+  spreadsheetId: varchar("spreadsheet_id", { length: 100 }).notNull(),
+  sheetGroupId: varchar("sheet_group_id", { length: 50 }),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  createdBy: integer("created_by").references(() => instructorsAuth.id),
+  updatedBy: integer("updated_by").references(() => instructorsAuth.id),
+});
+
 export const attendanceRequestSchema = z.object({
   groupId: z.string().min(1),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -196,11 +210,24 @@ export const instructorGroupAssignmentsRelations = relations(instructorGroupAssi
   }),
 }));
 
+export const groupsConfigRelations = relations(groupsConfig, ({ one }) => ({
+  createdBy: one(instructorsAuth, {
+    fields: [groupsConfig.createdBy],
+    references: [instructorsAuth.id],
+  }),
+  updatedBy: one(instructorsAuth, {
+    fields: [groupsConfig.updatedBy],
+    references: [instructorsAuth.id],
+  }),
+}));
+
 // Types for database tables
 export type InstructorAuth = typeof instructorsAuth.$inferSelect;
 export type InsertInstructorAuth = typeof instructorsAuth.$inferInsert;
 export type InstructorGroupAssignment = typeof instructorGroupAssignments.$inferSelect;
 export type InsertInstructorGroupAssignment = typeof instructorGroupAssignments.$inferInsert;
+export type GroupConfig = typeof groupsConfig.$inferSelect;
+export type InsertGroupConfig = typeof groupsConfig.$inferInsert;
 
 // Validation schemas
 export const loginSchema = z.object({
@@ -239,6 +266,16 @@ export const assignGroupSchema = z.object({
   canViewReports: z.boolean().default(true),
 });
 
+// Group configuration schemas
+export const createGroupConfigSchema = createInsertSchema(groupsConfig, {
+  groupId: z.string().min(1, "ID grupy jest wymagane"),
+  name: z.string().min(1, "Nazwa grupy jest wymagana"), 
+  spreadsheetId: z.string().min(1, "ID arkusza Google Sheets jest wymagane"),
+  sheetGroupId: z.string().optional(),
+}).omit({ id: true, createdAt: true, updatedAt: true, createdBy: true, updatedBy: true });
+
+export const updateGroupConfigSchema = createGroupConfigSchema.partial();
+
 // Permission helper types
 export type UserRole = "owner" | "reception" | "instructor";
 export type UserStatus = "pending" | "active" | "inactive";
@@ -258,3 +295,5 @@ export type CreateInstructorRequest = z.infer<typeof createInstructorSchema>;
 export type RegisterInstructorRequest = z.infer<typeof registerInstructorSchema>;
 export type UpdateUserStatusRequest = z.infer<typeof updateUserStatusSchema>;
 export type AssignGroupRequest = z.infer<typeof assignGroupSchema>;
+export type CreateGroupConfigRequest = z.infer<typeof createGroupConfigSchema>;
+export type UpdateGroupConfigRequest = z.infer<typeof updateGroupConfigSchema>;
