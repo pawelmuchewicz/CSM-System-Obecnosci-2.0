@@ -991,8 +991,12 @@ function SheetsConfigTab() {
   // Create new configuration mutation
   const createConfigMutation = useMutation({
     mutationFn: async (data: {groupId: string; name: string; spreadsheetId: string; sheetGroupId?: string}) => {
-      const response = await apiRequest('/api/admin/groups-config', {
+      const response = await fetch('/api/admin/groups-config', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
       if (!response.ok) throw new Error(await response.text());
@@ -1021,8 +1025,12 @@ function SheetsConfigTab() {
   // Update configuration mutation
   const updateConfigMutation = useMutation({
     mutationFn: async ({id, data}: {id: number; data: Partial<GroupConfig>}) => {
-      const response = await apiRequest(`/api/admin/groups-config/${id}`, {
+      const response = await fetch(`/api/admin/groups-config/${id}`, {
         method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
       if (!response.ok) throw new Error(await response.text());
@@ -1052,8 +1060,9 @@ function SheetsConfigTab() {
   // Delete configuration mutation
   const deleteConfigMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await apiRequest(`/api/admin/groups-config/${id}`, {
+      const response = await fetch(`/api/admin/groups-config/${id}`, {
         method: 'DELETE',
+        credentials: 'include',
       });
       if (!response.ok) throw new Error(await response.text());
       return response.json();
