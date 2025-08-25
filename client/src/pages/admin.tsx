@@ -972,6 +972,7 @@ function AllUsersTab() {
 function SheetsConfigTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const permissions = usePermissions();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingConfig, setEditingConfig] = useState<GroupConfig | null>(null);
@@ -1299,16 +1300,18 @@ function SheetsConfigTab() {
                         <Edit className="w-4 h-4 mr-1" />
                         Edytuj
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDeleteConfig(config.id)}
-                        disabled={deleteConfigMutation.isPending}
-                        data-testid={`button-delete-config-${config.id}`}
-                      >
-                        <Trash2 className="w-4 h-4 mr-1" />
-                        Usuń
-                      </Button>
+                      {permissions.isOwner && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteConfig(config.id)}
+                          disabled={deleteConfigMutation.isPending}
+                          data-testid={`button-delete-config-${config.id}`}
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Usuń
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>

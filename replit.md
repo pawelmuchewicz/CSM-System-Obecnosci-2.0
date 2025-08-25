@@ -51,6 +51,7 @@ The system uses Google Cloud Service Account credentials to access sheets on beh
 - **Responsive Design**: Mobile-first approach with sticky headers and touch-friendly interfaces
 - **Polish Locale Support**: Proper sorting and formatting for Polish educational institutions
 - **Data Validation**: Schema validation using Zod for type-safe data operations
+- **Google Sheets Configuration Management**: Database-driven configuration system allowing reception and owner accounts to manage Google Sheets IDs through admin interface, with deletion restricted to owners only for safety
 
 # External Dependencies
 

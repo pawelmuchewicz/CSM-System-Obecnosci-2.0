@@ -1613,11 +1613,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // DELETE /api/admin/groups-config/:id - Delete group configuration (reception/owner only)
+  // DELETE /api/admin/groups-config/:id - Delete group configuration (owner only)
   app.delete("/api/admin/groups-config/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
-    if (!req.user?.permissions.canManageUsers) {
+    if (req.user?.role !== 'owner') {
       return res.status(403).json({ 
-        message: "Brak uprawnień do zarządzania konfiguracją arkuszy",
+        message: "Tylko właściciel może usuwać konfiguracje arkuszy",
         code: "INSUFFICIENT_PERMISSIONS" 
       });
     }
