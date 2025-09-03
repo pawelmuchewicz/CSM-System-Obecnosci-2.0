@@ -11,7 +11,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { Group } from "@shared/schema";
 
 interface PendingUser {
@@ -647,6 +647,9 @@ function AllUsersTab() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Dodaj nowego użytkownika</DialogTitle>
+                  <DialogDescription>
+                    Utwórz nowe konto użytkownika w systemie
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -818,6 +821,9 @@ function AllUsersTab() {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edytuj użytkownika</DialogTitle>
+            <DialogDescription>
+              Modyfikuj dane użytkownika
+            </DialogDescription>
           </DialogHeader>
           {editingUser && (
             <div className="space-y-4">
@@ -915,6 +921,9 @@ function AllUsersTab() {
             <DialogTitle>
               Zarządzaj grupami - {groupsEditingUser?.firstName} {groupsEditingUser?.lastName}
             </DialogTitle>
+            <DialogDescription>
+              Wybierz grupy do których użytkownik będzie miał dostęp
+            </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
@@ -1175,6 +1184,9 @@ function SheetsConfigTab() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Dodaj konfigurację arkusza</DialogTitle>
+                <DialogDescription>
+                  Skonfiguruj nowy arkusz Google Sheets dla grupy
+                </DialogDescription>
               </DialogHeader>
               
               {/* Reminder for copied sheets */}
