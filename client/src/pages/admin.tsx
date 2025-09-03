@@ -637,7 +637,19 @@ function AllUsersTab() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Wszyscy użytkownicy</span>
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+              setIsAddDialogOpen(open);
+              if (!open) {
+                setNewUser({
+                  firstName: '',
+                  lastName: '',
+                  username: '',
+                  email: '',
+                  role: 'instructor',
+                  status: 'active'
+                });
+              }
+            }}>
               <DialogTrigger asChild>
                 <Button data-testid="button-add-user">
                   <Plus className="w-4 h-4 mr-2" />
@@ -817,7 +829,12 @@ function AllUsersTab() {
       </Card>
 
       {/* Edit User Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+        setIsEditDialogOpen(open);
+        if (!open) {
+          setEditingUser(null);
+        }
+      }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edytuj użytkownika</DialogTitle>
@@ -1174,7 +1191,15 @@ function SheetsConfigTab() {
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>Konfiguracja arkuszy Google Sheets</span>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+            setIsAddDialogOpen(open);
+            if (!open) {
+              setGroupId('');
+              setName('');
+              setSpreadsheetId('');
+              setSheetGroupId('');
+            }
+          }}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-sheet-config">
                 <Plus className="w-4 h-4 mr-2" />
