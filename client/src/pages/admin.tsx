@@ -644,68 +644,73 @@ function AllUsersTab() {
           ) : (
             <div className="space-y-4">
               {allUsers?.users?.map((user) => (
-                <div key={user.id} className="border rounded-lg p-4 flex items-center justify-between">
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <h3 className="font-medium">{user.firstName} {user.lastName}</h3>
-                      <Badge variant="outline">@{user.username}</Badge>
-                      <Badge variant={getStatusColor(user.status, user.active)}>
-                        {getRoleDisplayName(user.role)}
-                      </Badge>
-                      <Badge variant={getStatusColor(user.status, user.active)}>
-                        {getStatusDisplayName(user.status, user.active)}
-                      </Badge>
+                <div key={user.id} className="border rounded-lg p-4">
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-medium">{user.firstName} {user.lastName}</h3>
+                        <Badge variant="outline">@{user.username}</Badge>
+                        <Badge variant={getStatusColor(user.status, user.active)}>
+                          {getRoleDisplayName(user.role)}
+                        </Badge>
+                        <Badge variant={getStatusColor(user.status, user.active)}>
+                          {getStatusDisplayName(user.status, user.active)}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {user.email || 'Brak email'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Utworzony: {new Date(user.createdAt).toLocaleDateString('pl-PL')}
+                        {user.lastLoginAt && ` • Ostatnie logowanie: ${new Date(user.lastLoginAt).toLocaleDateString('pl-PL')}`}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {user.email || 'Brak email'}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Utworzony: {new Date(user.createdAt).toLocaleDateString('pl-PL')}
-                      {user.lastLoginAt && ` • Ostatnie logowanie: ${new Date(user.lastLoginAt).toLocaleDateString('pl-PL')}`}
-                    </p>
-                  </div>
-                  
-                  <div className="flex space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEditUser(user)}
-                      data-testid={`button-edit-user-${user.id}`}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    {(permissions.canAssignGroups && user.role === 'instructor') && (
+                    
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleOpenGroupsDialog(user)}
-                        data-testid={`button-edit-groups-${user.id}`}
-                        title="Edytuj grupy"
+                        onClick={() => handleEditUser(user)}
+                        data-testid={`button-edit-user-${user.id}`}
                       >
-                        <Users className="w-4 h-4" />
+                        <Edit className="w-4 h-4 mr-1" />
+                        <span className="hidden sm:inline">Edytuj</span>
                       </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant={user.active ? "destructive" : "default"}
-                      onClick={() => toggleUserStatusMutation.mutate({ userId: user.id, active: !user.active })}
-                      disabled={toggleUserStatusMutation.isPending}
-                      data-testid={`button-toggle-status-${user.id}`}
-                    >
-                      {user.active ? 'Dezaktywuj' : 'Aktywuj'}
-                    </Button>
-                    {!user.active && permissions.isOwner && (
+                      {(permissions.canAssignGroups && user.role === 'instructor') && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleOpenGroupsDialog(user)}
+                          data-testid={`button-edit-groups-${user.id}`}
+                          title="Edytuj grupy"
+                        >
+                          <Users className="w-4 h-4 mr-1" />
+                          <span className="hidden sm:inline">Grupy</span>
+                        </Button>
+                      )}
                       <Button
                         size="sm"
-                        variant="destructive"
-                        onClick={() => handleDeleteUser(user.id)}
-                        disabled={deleteUserMutation.isPending}
-                        data-testid={`button-delete-user-${user.id}`}
-                        title="Usuń nieaktywnego użytkownika (tylko właściciel)"
+                        variant={user.active ? "destructive" : "default"}
+                        onClick={() => toggleUserStatusMutation.mutate({ userId: user.id, active: !user.active })}
+                        disabled={toggleUserStatusMutation.isPending}
+                        data-testid={`button-toggle-status-${user.id}`}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        {user.active ? 'Dezaktywuj' : 'Aktywuj'}
                       </Button>
-                    )}
+                      {!user.active && permissions.isOwner && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeleteUser(user.id)}
+                          disabled={deleteUserMutation.isPending}
+                          data-testid={`button-delete-user-${user.id}`}
+                          title="Usuń nieaktywnego użytkownika (tylko właściciel)"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          <span className="hidden sm:inline">Usuń</span>
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
