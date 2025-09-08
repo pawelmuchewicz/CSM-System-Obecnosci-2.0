@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { getGroups, getStudents, getAttendance, setAttendance, getInstructors, getInstructorGroups, getInstructorsForGroup, getAttendanceReport, getUsersFromSheets, syncUserToSheets, syncUsersToSheets, removeUserFromSheets, clearCache } from "./lib/sheets";
+import { getGroups, getStudents, getAttendance, setAttendance, getInstructors, getInstructorGroups, getInstructorsForGroup, addInstructorGroupAssignment, getAttendanceReport, getUsersFromSheets, syncUserToSheets, syncUsersToSheets, removeUserFromSheets, clearCache } from "./lib/sheets";
 import { attendanceRequestSchema, loginSchema, instructorsAuth, instructorGroupAssignments, registerInstructorSchema, updateUserStatusSchema, assignGroupSchema, groupsConfig, createGroupConfigSchema, updateGroupConfigSchema } from "@shared/schema";
 import { setupSession, requireAuth, optionalAuth, requireGroupAccess, hashPassword, verifyPassword, type AuthenticatedRequest } from "./auth";
 import { db } from "./db";
@@ -324,6 +324,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(502).json({ 
         message: "Failed to fetch instructors for group from Google Sheets",
         hint: "Ensure both Instructors and InstructorGroups sheets exist and are shared with the service account as Editor"
+      });
+    }
+  });
+
+  // POST /api/instructor-group-assignments - Add instructor to group
+  app.post("/api/instructor-group-assignments", async (req, res) => {
+    try {
+      const { instructorId, groupId, role } = req.body;
+      
+      if (!instructorId || !groupId) {
+        return res.status(400).json({ 
+          message: "Missing required fields: instructorId and groupId" 
+        });
+      }
+
+      await addInstructorGroupAssignment(instructorId, groupId, role || 'instruktor');
+      res.json({ 
+        success: true, 
+        message: `Added instructor ${instructorId} to group ${groupId}` 
+      });
+    } catch (error) {
+      console.error("Error adding instructor group assignment:", error);
+      res.status(502).json({ 
+        message: "Failed to add instructor group assignment",
+        hint: "Ensure the InstructorGroups sheet exists and is shared with the service account as Editor"
       });
     }
   });

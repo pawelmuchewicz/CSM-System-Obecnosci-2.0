@@ -787,6 +787,37 @@ export async function getInstructorGroups(): Promise<InstructorGroup[]> {
   }
 }
 
+export async function addInstructorGroupAssignment(instructorId: string, groupId: string, role: string = 'instruktor'): Promise<void> {
+  try {
+    const sheets = await getSheets();
+    const mainSpreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID!;
+
+    // Get current data to find the next row
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: mainSpreadsheetId,
+      range: 'InstructorGroups!A:F'
+    });
+
+    const rows = response.data.values || [];
+    const nextRow = rows.length + 1;
+
+    // Add new assignment
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: mainSpreadsheetId,
+      range: 'InstructorGroups!A:F',
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [[instructorId, groupId, role, '', '']] // instructor_id, group_id, role, start_date, end_date
+      }
+    });
+
+    console.log(`Added instructor ${instructorId} to group ${groupId} with role ${role}`);
+  } catch (error) {
+    console.error('Error adding instructor group assignment:', error);
+    throw new Error('Failed to add instructor group assignment to Google Sheets');
+  }
+}
+
 export async function getInstructorsForGroup(groupId: string): Promise<(Instructor & { role?: string })[]> {
   try {
     if (!groupId) {
