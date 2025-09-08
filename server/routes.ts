@@ -1009,8 +1009,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         spreadsheetId,
         message: 'Check this spreadsheet ID manually in Google Sheets'
       });
-    } catch (error) {
-      res.json({ error: error.message });
+    } catch (error: any) {
+      res.json({ error: error?.message || 'Unknown error' });
     }
   });
 

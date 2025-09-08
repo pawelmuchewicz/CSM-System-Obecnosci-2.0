@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserCheck, UserX, Settings, Plus, RefreshCw, Download, Upload, AlertCircle, Edit2 as Edit, Trash2, Sheet, ExternalLink } from "lucide-react";
+import { Users, UserCheck, UserX, Settings, Plus, RefreshCw, AlertCircle, Edit2 as Edit, Trash2, Sheet, ExternalLink } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -301,10 +301,6 @@ function AllUsersTab() {
     retry: false,
   });
 
-  const { data: sheetUsers } = useQuery<{users: SheetUser[]}>({
-    queryKey: ['/api/users/sync/sheets'],
-    retry: false,
-  });
 
   const { data: groupsData } = useQuery<{groups: Group[]}>({
     queryKey: ['/api/groups'],
@@ -363,7 +359,6 @@ function AllUsersTab() {
         description: "Grupy użytkownika zostały zaktualizowane",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/users/sync/sheets'] });
       setIsGroupsDialogOpen(false);
       setGroupsEditingUser(null);
       setSelectedGroups([]);
@@ -377,66 +372,8 @@ function AllUsersTab() {
     },
   });
 
-  const syncToSheetsMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest('POST', '/api/users/sync/to-sheets', {});
-    },
-    onSuccess: (data: any) => {
-      toast({
-        title: "Sukces",
-        description: `Zsynchronizowano ${data.count} użytkowników do arkusza`,
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/users/sync/sheets'] });
-    },
-    onError: () => {
-      toast({
-        title: "Błąd",
-        description: "Nie udało się zsynchronizować użytkowników do arkusza",
-        variant: "destructive",
-      });
-    },
-  });
 
-  const syncFromSheetsMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest('POST', '/api/users/sync/from-sheets', {});
-    },
-    onSuccess: (data: any) => {
-      toast({
-        title: "Sukces",
-        description: `Importowano ${data.imported} nowych i zaktualizowano ${data.updated} użytkowników`,
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-    },
-    onError: () => {
-      toast({
-        title: "Błąd",
-        description: "Nie udało się zaimportować użytkowników z arkusza",
-        variant: "destructive",
-      });
-    },
-  });
 
-  const bidirectionalSyncMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest('POST', '/api/users/sync/bidirectional', {});
-    },
-    onSuccess: (data: any) => {
-      toast({
-        title: "Sukces",
-        description: "Synchronizacja dwukierunkowa zakończona pomyślnie",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/users/sync/sheets'] });
-    },
-    onError: () => {
-      toast({
-        title: "Błąd",
-        description: "Nie udało się wykonać synchronizacji dwukierunkowej",
-        variant: "destructive",
-      });
-    },
-  });
 
   const updateUserMutation = useMutation({
     mutationFn: async (userData: any) => {
@@ -576,61 +513,6 @@ function AllUsersTab() {
 
   return (
     <div className="space-y-6">
-      {/* Sync Controls */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Synchronizacja z Google Sheets</span>
-            <div className="flex space-x-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => syncToSheetsMutation.mutate()}
-                disabled={syncToSheetsMutation.isPending}
-                data-testid="button-sync-to-sheets"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Do arkusza
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => syncFromSheetsMutation.mutate()}
-                disabled={syncFromSheetsMutation.isPending}
-                data-testid="button-sync-from-sheets"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Z arkusza
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => bidirectionalSyncMutation.mutate()}
-                disabled={bidirectionalSyncMutation.isPending}
-                data-testid="button-sync-bidirectional"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Dwukierunkowa
-              </Button>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-medium mb-2">Użytkownicy w bazie danych</h4>
-              <p className="text-sm text-muted-foreground">
-                {allUsers?.users?.length || 0} użytkowników
-              </p>
-            </div>
-            <div>
-              <h4 className="font-medium mb-2">Użytkownicy w arkuszu</h4>
-              <p className="text-sm text-muted-foreground">
-                {sheetUsers?.users?.length || 0} użytkowników
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Users List */}
       <Card>
