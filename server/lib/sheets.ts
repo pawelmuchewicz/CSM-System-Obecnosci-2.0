@@ -905,8 +905,8 @@ export async function getInstructorsForGroup(groupId: string): Promise<(Instruct
       return [];
     }
     
-    // Get all instructors from main spreadsheet
-    const allInstructors = await getInstructors();
+    // Get all instructors from main spreadsheet - DISABLED, using only database now
+    // const allInstructors = await getInstructors();
     
     // Get instructor-group assignments from main spreadsheet
     const instructorGroups = await getInstructorGroups();
@@ -935,27 +935,13 @@ export async function getInstructorsForGroup(groupId: string): Promise<(Instruct
       return user.groupIds && user.groupIds.includes(groupId);
     });
     
-    // Filter instructors assigned to this group from Google Sheets
-    const assignedInstructorIds = instructorGroups
-      .filter(ig => ig.group_id === groupId)
-      .map(ig => ig.instructor_id);
+    // Filter instructors assigned to this group from Google Sheets - DISABLED
+    // const assignedInstructorIds = instructorGroups
+    //   .filter(ig => ig.group_id === groupId)
+    //   .map(ig => ig.instructor_id);
     
-    // Combine both sources
+    // Initialize with empty array - using only database users now
     const instructorsForGroup: (Instructor & { role?: string })[] = [];
-    
-    // Add instructors from Google Sheets (external instructors)
-    allInstructors
-      .filter(instructor => assignedInstructorIds.includes(instructor.id))
-      .forEach(instructor => {
-        const assignment = instructorGroups.find(
-          ig => ig.instructor_id === instructor.id && ig.group_id === groupId
-        );
-        
-        instructorsForGroup.push({
-          ...instructor,
-          role: assignment?.role
-        });
-      });
     
     // Add system users with access to this group
     usersWithAccess.forEach(user => {
