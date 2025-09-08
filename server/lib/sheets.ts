@@ -1,7 +1,7 @@
 import { google } from 'googleapis';
 import type { Group, Student, AttendanceItem, Instructor, InstructorGroup, AttendanceReportFilters, AttendanceReportResponse, AttendanceReportItem, StudentStats, GroupStats, AttendanceStats } from '@shared/schema';
 import { db } from '../db';
-import { groupsConfig } from '@shared/schema';
+import { instructorsAuth, groupsConfig } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 
 // Validate required environment variables
@@ -911,28 +911,87 @@ export async function getInstructorsForGroup(groupId: string): Promise<(Instruct
     // Get instructor-group assignments from main spreadsheet
     const instructorGroups = await getInstructorGroups();
     
-    // Filter instructors assigned to this group
+    // Get users from database who have access to this group
+    const dbUsers = await db
+      .select({
+        id: instructorsAuth.id,
+        username: instructorsAuth.username,
+        firstName: instructorsAuth.firstName,
+        lastName: instructorsAuth.lastName,
+        email: instructorsAuth.email,
+        role: instructorsAuth.role,
+        groupIds: instructorsAuth.groupIds,
+      })
+      .from(instructorsAuth)
+      .where(eq(instructorsAuth.active, true));
+    
+    // Filter users who have access to this group
+    const usersWithAccess = dbUsers.filter(user => {
+      // Admins (owner, reception) have access to all groups
+      if (user.role === 'owner' || user.role === 'reception') {
+        return true;
+      }
+      // Regular instructors need explicit group assignment
+      return user.groupIds && user.groupIds.includes(groupId);
+    });
+    
+    // Filter instructors assigned to this group from Google Sheets
     const assignedInstructorIds = instructorGroups
       .filter(ig => ig.group_id === groupId)
       .map(ig => ig.instructor_id);
     
-    // Return instructors with their roles for this group
-    const instructorsForGroup = allInstructors
+    // Combine both sources
+    const instructorsForGroup: (Instructor & { role?: string })[] = [];
+    
+    // Add instructors from Google Sheets (external instructors)
+    allInstructors
       .filter(instructor => assignedInstructorIds.includes(instructor.id))
-      .map(instructor => {
-        // Find the role for this instructor in this group
+      .forEach(instructor => {
         const assignment = instructorGroups.find(
           ig => ig.instructor_id === instructor.id && ig.group_id === groupId
         );
         
-        return {
+        instructorsForGroup.push({
           ...instructor,
           role: assignment?.role
-        };
+        });
       });
+    
+    // Add system users with access to this group
+    usersWithAccess.forEach(user => {
+      // Check if this user is not already added from Google Sheets
+      const alreadyAdded = instructorsForGroup.some(i => 
+        i.first_name === user.firstName && i.last_name.trim() === user.lastName.trim()
+      );
+      
+      if (!alreadyAdded) {
+        instructorsForGroup.push({
+          id: `db-${user.id}`, // Prefix to distinguish from Google Sheets IDs
+          first_name: user.firstName,
+          last_name: user.lastName,
+          email: user.email || undefined,
+          phone: undefined,
+          specialization: undefined,
+          active: true,
+          role: user.role === 'owner' ? 'właściciel' : 
+                user.role === 'reception' ? 'recepcja' : 
+                'instruktor'
+        });
+      }
+    });
 
-    // Sort by last_name then first_name
+    // Sort by role priority (owners first, then reception, then instructors), then by name
     instructorsForGroup.sort((a, b) => {
+      // Role priority
+      const roleOrder = { 'właściciel': 1, 'recepcja': 2, 'glowny': 3, 'instruktor': 4, 'asystent': 5 };
+      const aRoleOrder = roleOrder[a.role as keyof typeof roleOrder] || 99;
+      const bRoleOrder = roleOrder[b.role as keyof typeof roleOrder] || 99;
+      
+      if (aRoleOrder !== bRoleOrder) {
+        return aRoleOrder - bRoleOrder;
+      }
+      
+      // Then sort by name
       const lastNameCompare = a.last_name.localeCompare(b.last_name, 'pl');
       if (lastNameCompare !== 0) return lastNameCompare;
       return a.first_name.localeCompare(b.first_name, 'pl');
