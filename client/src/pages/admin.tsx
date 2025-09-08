@@ -536,9 +536,10 @@ function AllUsersTab() {
               }
             }}>
               <DialogTrigger asChild>
-                <Button data-testid="button-add-user">
+                <Button data-testid="button-add-user" className="h-10 px-4 font-medium">
                   <Plus className="w-4 h-4 mr-2" />
-                  Dodaj użytkownika
+                  <span className="hidden sm:inline">Dodaj użytkownika</span>
+                  <span className="sm:hidden">Dodaj</span>
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -613,16 +614,21 @@ function AllUsersTab() {
                     </Select>
                   </div>
                   
-                  <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
-                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                  <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setIsAddDialogOpen(false)}
+                      className="h-10 px-6 font-medium"
+                    >
                       Anuluj
                     </Button>
                     <Button 
                       onClick={handleCreateUser}
                       disabled={createUserMutation.isPending}
                       data-testid="button-create-user"
+                      className="h-10 px-6 font-medium"
                     >
-                      {createUserMutation.isPending ? 'Tworzenie...' : 'Utwórz'}
+                      {createUserMutation.isPending ? 'Tworzenie...' : 'Utwórz użytkownika'}
                     </Button>
                   </div>
                 </div>
@@ -1104,9 +1110,11 @@ function SheetsConfigTab() {
                   });
                 }
               }}
+              className="h-10 px-4 font-medium"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
-              Odśwież dane
+              <span className="hidden sm:inline">Odśwież dane</span>
+              <span className="sm:hidden">Odśwież</span>
             </Button>
             <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
             setIsAddDialogOpen(open);
@@ -1118,9 +1126,10 @@ function SheetsConfigTab() {
             }
           }}>
             <DialogTrigger asChild>
-              <Button data-testid="button-add-sheet-config">
+              <Button data-testid="button-add-sheet-config" className="h-10 px-4 font-medium">
                 <Plus className="w-4 h-4 mr-2" />
-                Dodaj arkusz
+                <span className="hidden sm:inline">Dodaj arkusz</span>
+                <span className="sm:hidden">Dodaj</span>
               </Button>
             </DialogTrigger>
             <DialogContent>
@@ -1197,13 +1206,14 @@ function SheetsConfigTab() {
                     data-testid="input-sheet-group-id"
                   />
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
+                <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
                   <Button 
                     variant="outline" 
                     onClick={() => {
                       setIsAddDialogOpen(false);
                       resetForm();
                     }}
+                    className="h-10 px-6 font-medium"
                   >
                     Anuluj
                   </Button>
@@ -1211,9 +1221,10 @@ function SheetsConfigTab() {
                     onClick={handleAddConfig}
                     disabled={createConfigMutation.isPending}
                     data-testid="button-save-config"
+                    className="h-10 px-6 font-medium"
                   >
                     {createConfigMutation.isPending && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />}
-                    Zapisz
+                    Zapisz arkusz
                   </Button>
                 </div>
               </div>
