@@ -123,11 +123,6 @@ export function LoginPage() {
             </Link>
           </div>
 
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            <p>Testowe konto:</p>
-            <p><strong>Login:</strong> admin</p>
-            <p><strong>Hasło:</strong> admin123</p>
-          </div>
         </CardContent>
       </Card>
     </div>
