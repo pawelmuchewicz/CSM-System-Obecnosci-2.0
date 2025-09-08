@@ -1073,7 +1073,30 @@ function SheetsConfigTab() {
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>Konfiguracja arkuszy Google Sheets</span>
-          <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+          <div className="flex space-x-2">
+            <Button
+              size="sm" 
+              variant="outline"
+              onClick={async () => {
+                try {
+                  await apiRequest('DELETE', '/api/cache/clear');
+                  toast({
+                    title: "Sukces",
+                    description: "Dane zostały odświeżone"
+                  });
+                } catch (error: any) {
+                  toast({
+                    title: "Błąd", 
+                    description: "Nie udało się odświeżyć danych",
+                    variant: "destructive"
+                  });
+                }
+              }}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Odśwież dane
+            </Button>
+            <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
             setIsAddDialogOpen(open);
             if (!open) {
               setGroupId('');
@@ -1184,6 +1207,7 @@ function SheetsConfigTab() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-2">
           Zarządzaj konfiguracją arkuszy Google Sheets dla różnych grup w systemie. 
