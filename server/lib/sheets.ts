@@ -793,80 +793,40 @@ export async function getInstructorsForGroup(groupId: string): Promise<(Instruct
       return [];
     }
     
-    const sheets = await getSheets();
-    const spreadsheetId = await getSpreadsheetId(groupId);
-
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: 'Instructors!A1:H1000'
-    });
-
-    const rows = response.data.values || [];
-    if (rows.length === 0) return [];
-
-    const header = rows[0];
-    const instructors: (Instructor & { role?: string })[] = [];
-
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i];
-      if (!row || row.length === 0) continue;
-
-      const instructor: Partial<Instructor & { role?: string }> = {};
-      
-      header.forEach((columnName, index) => {
-        const value = row[index];
-        const normalizedColumn = columnName.toLowerCase().trim();
+    // Get all instructors from main spreadsheet
+    const allInstructors = await getInstructors();
+    
+    // Get instructor-group assignments from main spreadsheet
+    const instructorGroups = await getInstructorGroups();
+    
+    // Filter instructors assigned to this group
+    const assignedInstructorIds = instructorGroups
+      .filter(ig => ig.group_id === groupId)
+      .map(ig => ig.instructor_id);
+    
+    // Return instructors with their roles for this group
+    const instructorsForGroup = allInstructors
+      .filter(instructor => assignedInstructorIds.includes(instructor.id))
+      .map(instructor => {
+        // Find the role for this instructor in this group
+        const assignment = instructorGroups.find(
+          ig => ig.instructor_id === instructor.id && ig.group_id === groupId
+        );
         
-        switch (normalizedColumn) {
-          case 'id':
-            instructor.id = value ? String(value).trim() : '';
-            break;
-          case 'first_name':
-          case 'imie':
-            instructor.first_name = value ? String(value).trim() : '';
-            break;
-          case 'last_name':
-          case 'nazwisko':
-            instructor.last_name = value ? String(value).trim() : '';
-            break;
-          case 'email':
-          case 'mail':
-            instructor.email = value ? String(value).trim() : undefined;
-            break;
-          case 'phone':
-          case 'telefon':
-            instructor.phone = value ? String(value).trim() : undefined;
-            break;
-          case 'specialization':
-          case 'specjalizacja':
-            instructor.specialization = value ? String(value).trim() : undefined;
-            break;
-          case 'role':
-          case 'rola':
-            instructor.role = value ? String(value).trim() : undefined;
-            break;
-          case 'active':
-          case 'aktywny':
-            const activeValue = String(value || '').toLowerCase().trim();
-            instructor.active = ['true', '1', 'tak', 'yes'].includes(activeValue);
-            break;
-        }
+        return {
+          ...instructor,
+          role: assignment?.role
+        };
       });
 
-      // Validate required fields
-      if (instructor.id && instructor.first_name && instructor.last_name) {
-        instructors.push(instructor as Instructor & { role?: string });
-      }
-    }
-
     // Sort by last_name then first_name
-    instructors.sort((a, b) => {
+    instructorsForGroup.sort((a, b) => {
       const lastNameCompare = a.last_name.localeCompare(b.last_name, 'pl');
       if (lastNameCompare !== 0) return lastNameCompare;
       return a.first_name.localeCompare(b.first_name, 'pl');
     });
 
-    return instructors;
+    return instructorsForGroup;
   } catch (error) {
     console.error('Error fetching instructors for group:', error);
     throw new Error('Failed to fetch instructors for group');
