@@ -132,6 +132,11 @@ const GROUPS_CONFIG: Record<string, { name: string; spreadsheetId: string; sheet
     name: 'k-pop',
     spreadsheetId: '1hfHr0_v34KSenDvy_JwSZZlIiEzusPyrvy7eSN18jKY',
     sheetGroupId: 'k-pop'
+  },
+  'TTNABOR 25-26': {
+    name: 'TTNABOR 25-26',
+    spreadsheetId: '1lkGsCubzLOQeMpFxCUqr1KB55b6CwINNaIH1J7ldrfM',
+    sheetGroupId: 'TTNABOR'  // Mapowanie: system szuka "TTNABOR 25-26", ale w arkuszu to "TTNABOR"
   }
 };
 
