@@ -143,22 +143,22 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="pending-users" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="pending-users" data-testid="tab-pending-users">
-            <UserCheck className="w-4 h-4 mr-2" />
-            Oczekujące konta
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-1">
+          <TabsTrigger value="pending-users" data-testid="tab-pending-users" className="text-xs md:text-sm">
+            <UserCheck className="w-4 h-4 md:mr-2" />
+            <span className="hidden sm:inline ml-1">Oczekujące</span>
           </TabsTrigger>
-          <TabsTrigger value="all-users" data-testid="tab-all-users">
-            <Users className="w-4 h-4 mr-2" />
-            Wszyscy użytkownicy
+          <TabsTrigger value="all-users" data-testid="tab-all-users" className="text-xs md:text-sm">
+            <Users className="w-4 h-4 md:mr-2" />
+            <span className="hidden sm:inline ml-1">Użytkownicy</span>
           </TabsTrigger>
-          <TabsTrigger value="sheets-config" data-testid="tab-sheets-config">
-            <Sheet className="w-4 h-4 mr-2" />
-            Arkusze Google
+          <TabsTrigger value="sheets-config" data-testid="tab-sheets-config" className="text-xs md:text-sm">
+            <Sheet className="w-4 h-4 md:mr-2" />
+            <span className="hidden sm:inline ml-1">Arkusze</span>
           </TabsTrigger>
-          <TabsTrigger value="settings" data-testid="tab-settings">
-            <Settings className="w-4 h-4 mr-2" />
-            Ustawienia
+          <TabsTrigger value="settings" data-testid="tab-settings" className="text-xs md:text-sm">
+            <Settings className="w-4 h-4 md:mr-2" />
+            <span className="hidden sm:inline ml-1">Ustawienia</span>
           </TabsTrigger>
         </TabsList>
 
@@ -183,43 +183,47 @@ export default function AdminPage() {
               ) : (
                 <div className="space-y-4">
                   {pendingUsers?.users?.map((user) => (
-                    <div key={user.id} className="border rounded-lg p-4 flex items-center justify-between">
-                      <div className="space-y-1">
-                        <div className="flex items-center space-x-2">
-                          <h3 className="font-medium">{user.firstName} {user.lastName}</h3>
-                          <Badge variant="outline">@{user.username}</Badge>
+                    <div key={user.id} className="border rounded-lg p-4">
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-medium">{user.firstName} {user.lastName}</h3>
+                            <Badge variant="outline">@{user.username}</Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {user.email} {user.phone && `• ${user.phone}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Zarejestrowany: {new Date(user.createdAt).toLocaleDateString('pl-PL')}
+                          </p>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {user.email} {user.phone && `• ${user.phone}`}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Zarejestrowany: {new Date(user.createdAt).toLocaleDateString('pl-PL')}
-                        </p>
-                      </div>
-                      
-                      <div className="flex space-x-2">
-                        <Button
-                          size="sm"
-                          onClick={() => handleApproveUser(user.id, 'instructor')}
-                          disabled={approveUserMutation.isPending}
-                          data-testid={`button-approve-instructor-${user.id}`}
-                        >
-                          <UserCheck className="w-4 h-4 mr-1" />
-                          Instruktor
-                        </Button>
                         
-                        {permissions.isOwner && (
+                        <div className="flex flex-col sm:flex-row gap-2">
                           <Button
                             size="sm"
-                            variant="outline"
-                            onClick={() => handleApproveUser(user.id, 'reception')}
+                            onClick={() => handleApproveUser(user.id, 'instructor')}
                             disabled={approveUserMutation.isPending}
-                            data-testid={`button-approve-reception-${user.id}`}
+                            data-testid={`button-approve-instructor-${user.id}`}
+                            className="flex-1 sm:flex-none"
                           >
                             <UserCheck className="w-4 h-4 mr-1" />
-                            Recepcja
+                            Instruktor
                           </Button>
-                        )}
+                          
+                          {permissions.isOwner && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleApproveUser(user.id, 'reception')}
+                              disabled={approveUserMutation.isPending}
+                              data-testid={`button-approve-reception-${user.id}`}
+                              className="flex-1 sm:flex-none"
+                            >
+                              <UserCheck className="w-4 h-4 mr-1" />
+                              Recepcja
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -546,7 +550,7 @@ function AllUsersTab() {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="firstName" className="text-sm font-medium text-gray-700">Imię *</Label>
                       <Input
