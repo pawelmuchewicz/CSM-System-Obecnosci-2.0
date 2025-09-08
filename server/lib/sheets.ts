@@ -298,7 +298,6 @@ export async function getStudents(groupId?: string, showInactive: boolean = fals
     const rows = response.data.values || [];
     
     if (rows.length < 2) {
-      console.log(`❌ No students found for group ${groupId} - empty sheet or missing data`);
       return [];
     }
 
@@ -362,12 +361,7 @@ export async function getStudents(groupId?: string, showInactive: boolean = fals
       const config = GROUPS_CONFIG[groupId];
       const sheetGroupId = config?.sheetGroupId || groupId;
       
-      // Log for debugging group filtering
-      const foundGroupIds = [...new Set(students.map(s => s.group_id))];
-      console.log(`🔍 Group ${groupId}: Looking for "${sheetGroupId}", found group_ids: [${foundGroupIds.map(id => `"${id}"`).join(', ')}]`);
-      
       filteredStudents = students.filter(s => s.group_id === sheetGroupId);
-      console.log(`✅ Filtered ${filteredStudents.length}/${students.length} students for group ${groupId}`);
     }
 
     // Helper function for natural class sorting (0A, 0B, 1A, 1C, 2B, 3A)
