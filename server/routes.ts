@@ -909,21 +909,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updatedAt: new Date()
       }).returning();
 
-      // Sync to Google Sheets
-      try {
-        await syncUserToSheets({
-          username: newUser.username,
-          firstName: newUser.firstName || '',
-          lastName: newUser.lastName || '',
-          email: newUser.email || '',
-          role: newUser.role || 'instructor',
-          status: newUser.status || 'active',
-          active: newUser.active !== false
-        });
-      } catch (syncError) {
-        console.error('Failed to sync new user to sheets:', syncError);
-        // Don't fail the request if sheet sync fails
-      }
+      // NOTE: User sync to Google Sheets removed - using only database now
 
       res.json({
         message: "Użytkownik został utworzony",
@@ -986,21 +972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Sync to Google Sheets
-      try {
-        await syncUserToSheets({
-          username: updatedUser.username,
-          firstName: updatedUser.firstName || '',
-          lastName: updatedUser.lastName || '',
-          email: updatedUser.email || '',
-          role: updatedUser.role || 'instructor',
-          status: updatedUser.status || 'active',
-          active: updatedUser.active !== false
-        });
-      } catch (syncError) {
-        console.error('Failed to sync updated user to sheets:', syncError);
-        // Don't fail the request if sheet sync fails
-      }
+      // NOTE: User sync to Google Sheets removed - using only database now
 
       res.json({
         message: "Status użytkownika został zaktualizowany",
@@ -1146,22 +1118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Sync to Google Sheets
-      try {
-        await syncUserToSheets({
-          username: updatedUser.username,
-          firstName: updatedUser.firstName || '',
-          lastName: updatedUser.lastName || '',
-          email: updatedUser.email || '',
-          role: updatedUser.role || 'instructor',
-          status: updatedUser.status || 'active',
-          active: updatedUser.active !== false,
-          groups: groupIds.join(',')
-        });
-      } catch (syncError) {
-        console.error('Failed to sync updated user groups to sheets:', syncError);
-        // Don't fail the request if sheet sync fails
-      }
+      // NOTE: User sync to Google Sheets removed - using only database now
 
       res.json({
         message: "Grupy użytkownika zostały zaktualizowane",

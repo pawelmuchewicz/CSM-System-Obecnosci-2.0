@@ -127,6 +127,11 @@ const GROUPS_CONFIG: Record<string, { name: string; spreadsheetId: string; sheet
     name: 'Sp9',
     spreadsheetId: '1y_9Zkr8Q589YGQ9BpUDaZXFN3h_y7QiXLcCeL1aKJz8',
     sheetGroupId: 'Sp9'
+  },
+  'k-pop': {
+    name: 'k-pop',
+    spreadsheetId: '1hfHr0_v34KSenDvy_JwSZZlIiEzusPyrvy7eSN18jKY',
+    sheetGroupId: 'k-pop'
   }
 };
 
@@ -355,8 +360,22 @@ export async function getStudents(groupId?: string, showInactive: boolean = fals
       const config = GROUPS_CONFIG[groupId];
       const sheetGroupId = config?.sheetGroupId || groupId;
       
+      // DEBUG: Log for k-pop debugging
+      if (groupId === 'k-pop') {
+        console.log('🐛 K-POP DEBUG:');
+        console.log('- Total students from sheet:', students.length);
+        console.log('- Looking for group_id:', sheetGroupId);
+        console.log('- Students group_ids:', students.map(s => s.group_id));
+        students.forEach((s, i) => {
+          console.log(`  Student ${i+1}: "${s.first_name} ${s.last_name}" group_id="${s.group_id}" active=${s.active}`);
+        });
+      }
       
       filteredStudents = students.filter(s => s.group_id === sheetGroupId);
+      
+      if (groupId === 'k-pop') {
+        console.log('- Filtered students:', filteredStudents.length);
+      }
     }
 
     // Helper function for natural class sorting (0A, 0B, 1A, 1C, 2B, 3A)
