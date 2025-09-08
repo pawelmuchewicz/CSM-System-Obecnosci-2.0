@@ -266,10 +266,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentAttendance = await getAttendance(groupId, date);
       const existingItem = currentAttendance.items.find(item => item.student_id === student_id);
       
-      // Create updated item with notes
+      // IMPORTANT: Only add notes if student already has some attendance status
+      // Don't create attendance record just for notes!
+      if (!existingItem || !existingItem.status) {
+        return res.status(400).json({ 
+          message: "Nie można dodać notatki do studenta który nie ma ustalonej obecności. Najpierw oznacz obecność (obecny/nieobecny).", 
+          code: "NO_ATTENDANCE_STATUS"
+        });
+      }
+      
+      // Create updated item with notes (preserve existing status)
       const updatedItem = {
         student_id,
-        status: existingItem?.status || 'nieobecny',
+        status: existingItem.status, // Keep existing status exactly as is
         updated_at: new Date().toISOString(),
         notes: notes || ''
       };
