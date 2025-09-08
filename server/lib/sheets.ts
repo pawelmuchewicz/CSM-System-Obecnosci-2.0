@@ -297,11 +297,20 @@ export async function getStudents(groupId?: string, showInactive: boolean = fals
 
     const rows = response.data.values || [];
     
+    // DEBUG: Show sheet structure for troubleshooting
+    console.log(`📊 DEBUG GROUP: ${groupId} (ID: ${spreadsheetId}):`);
+    console.log(`- Total rows: ${rows.length}`);
+    if (rows.length >= 1) console.log(`- Headers: ${JSON.stringify(rows[0])}`);
+    if (rows.length >= 2) console.log(`- Row 2: ${JSON.stringify(rows[1])}`);
+    if (rows.length >= 3) console.log(`- Row 3: ${JSON.stringify(rows[2])}`);
+    
     if (rows.length < 2) {
+      console.log(`❌ Empty sheet for group ${groupId} - need header + data rows`);
       return [];
     }
 
     const headers = rows[0].map((h: any) => String(h).toLowerCase().trim());
+    console.log(`- Processed headers: ${JSON.stringify(headers)}`);
     const students: Student[] = [];
 
     for (let i = 1; i < rows.length; i++) {
