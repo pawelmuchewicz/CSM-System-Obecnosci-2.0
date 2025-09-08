@@ -204,10 +204,10 @@ export default function AdminPage() {
                             onClick={() => handleApproveUser(user.id, 'instructor')}
                             disabled={approveUserMutation.isPending}
                             data-testid={`button-approve-instructor-${user.id}`}
-                            className="flex-1 sm:flex-none"
+                            className="flex-1 sm:flex-none py-2 px-4 font-medium"
                           >
-                            <UserCheck className="w-4 h-4 mr-1" />
-                            Instruktor
+                            <UserCheck className="w-4 h-4 mr-2" />
+                            Zatwierdź jako Instruktor
                           </Button>
                           
                           {permissions.isOwner && (
@@ -217,10 +217,10 @@ export default function AdminPage() {
                               onClick={() => handleApproveUser(user.id, 'reception')}
                               disabled={approveUserMutation.isPending}
                               data-testid={`button-approve-reception-${user.id}`}
-                              className="flex-1 sm:flex-none"
+                              className="flex-1 sm:flex-none py-2 px-4 font-medium"
                             >
-                              <UserCheck className="w-4 h-4 mr-1" />
-                              Recepcja
+                              <UserCheck className="w-4 h-4 mr-2" />
+                              Zatwierdź jako Recepcja
                             </Button>
                           )}
                         </div>
@@ -671,8 +671,9 @@ function AllUsersTab() {
                         variant="outline"
                         onClick={() => handleEditUser(user)}
                         data-testid={`button-edit-user-${user.id}`}
+                        className="min-w-[80px] h-9"
                       >
-                        <Edit className="w-4 h-4 mr-1" />
+                        <Edit className="w-4 h-4 sm:mr-2" />
                         <span className="hidden sm:inline">Edytuj</span>
                       </Button>
                       {(permissions.canAssignGroups && user.role === 'instructor') && (
@@ -682,8 +683,9 @@ function AllUsersTab() {
                           onClick={() => handleOpenGroupsDialog(user)}
                           data-testid={`button-edit-groups-${user.id}`}
                           title="Edytuj grupy"
+                          className="min-w-[80px] h-9"
                         >
-                          <Users className="w-4 h-4 mr-1" />
+                          <Users className="w-4 h-4 sm:mr-2" />
                           <span className="hidden sm:inline">Grupy</span>
                         </Button>
                       )}
@@ -693,6 +695,7 @@ function AllUsersTab() {
                         onClick={() => toggleUserStatusMutation.mutate({ userId: user.id, active: !user.active })}
                         disabled={toggleUserStatusMutation.isPending}
                         data-testid={`button-toggle-status-${user.id}`}
+                        className="min-w-[100px] h-9 font-medium"
                       >
                         {user.active ? 'Dezaktywuj' : 'Aktywuj'}
                       </Button>
@@ -704,8 +707,9 @@ function AllUsersTab() {
                           disabled={deleteUserMutation.isPending}
                           data-testid={`button-delete-user-${user.id}`}
                           title="Usuń nieaktywnego użytkownika (tylko właściciel)"
+                          className="min-w-[80px] h-9"
                         >
-                          <Trash2 className="w-4 h-4 mr-1" />
+                          <Trash2 className="w-4 h-4 sm:mr-2" />
                           <span className="hidden sm:inline">Usuń</span>
                         </Button>
                       )}
@@ -1291,8 +1295,9 @@ function SheetsConfigTab() {
                         variant="outline"
                         onClick={() => handleEditConfig(config)}
                         data-testid={`button-edit-config-${config.id}`}
+                        className="min-w-[100px] h-9 font-medium"
                       >
-                        <Edit className="w-4 h-4 mr-1" />
+                        <Edit className="w-4 h-4 mr-2" />
                         Edytuj
                       </Button>
                       {permissions.isOwner && (
@@ -1302,8 +1307,9 @@ function SheetsConfigTab() {
                           onClick={() => handleDeleteConfig(config.id)}
                           disabled={deleteConfigMutation.isPending}
                           data-testid={`button-delete-config-${config.id}`}
+                          className="min-w-[100px] h-9 font-medium"
                         >
-                          <Trash2 className="w-4 h-4 mr-1" />
+                          <Trash2 className="w-4 h-4 mr-2" />
                           Usuń
                         </Button>
                       )}
