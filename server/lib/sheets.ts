@@ -297,21 +297,14 @@ export async function getStudents(groupId?: string, showInactive: boolean = fals
 
     const rows = response.data.values || [];
     
-    // DEBUG: Show sheet structure for troubleshooting
-    console.log(`📊 DEBUG GROUP: ${groupId} (ID: ${spreadsheetId}):`);
-    console.log(`- Total rows: ${rows.length}`);
-    if (rows.length >= 1) console.log(`- Headers: ${JSON.stringify(rows[0])}`);
-    if (rows.length >= 2) console.log(`- Row 2: ${JSON.stringify(rows[1])}`);
-    if (rows.length >= 3) console.log(`- Row 3: ${JSON.stringify(rows[2])}`);
-    
     if (rows.length < 2) {
-      console.log(`❌ Empty sheet for group ${groupId} - need header + data rows`);
+      console.log(`❌ No students found for group ${groupId} - empty sheet or missing data`);
       return [];
     }
 
     const headers = rows[0].map((h: any) => String(h).toLowerCase().trim());
-    console.log(`- Processed headers: ${JSON.stringify(headers)}`);
     const students: Student[] = [];
+    let foundStudentsCount = 0;
 
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
@@ -369,7 +362,12 @@ export async function getStudents(groupId?: string, showInactive: boolean = fals
       const config = GROUPS_CONFIG[groupId];
       const sheetGroupId = config?.sheetGroupId || groupId;
       
+      // Log for debugging group filtering
+      const foundGroupIds = [...new Set(students.map(s => s.group_id))];
+      console.log(`🔍 Group ${groupId}: Looking for "${sheetGroupId}", found group_ids: [${foundGroupIds.map(id => `"${id}"`).join(', ')}]`);
+      
       filteredStudents = students.filter(s => s.group_id === sheetGroupId);
+      console.log(`✅ Filtered ${filteredStudents.length}/${students.length} students for group ${groupId}`);
     }
 
     // Helper function for natural class sorting (0A, 0B, 1A, 1C, 2B, 3A)
