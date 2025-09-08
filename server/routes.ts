@@ -1015,6 +1015,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // === DEBUG ROUTE ===
+  app.get("/api/debug/kpop-sheet", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const sheets = await db.execute(sql`
+        SELECT spreadsheet_id FROM groups_config WHERE group_id = 'k-pop'
+      `);
+      
+      const spreadsheetId = sheets.rows[0]?.spreadsheet_id;
+      res.json({
+        group: 'k-pop',
+        spreadsheetId,
+        message: 'Check this spreadsheet ID manually in Google Sheets'
+      });
+    } catch (error) {
+      res.json({ error: error.message });
+    }
+  });
+
   // === USER SYNCHRONIZATION ROUTES ===
   // REMOVED: All user sync endpoints - using only database now
 
