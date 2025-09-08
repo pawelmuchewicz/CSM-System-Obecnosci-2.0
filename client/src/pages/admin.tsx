@@ -438,7 +438,7 @@ function AllUsersTab() {
   const handleOpenGroupsDialog = (user: User) => {
     setGroupsEditingUser(user);
     // Get current user groups from database (groupIds)
-    const currentGroups = user.groupIds || [];
+    const currentGroups: string[] = [];
     setSelectedGroups(currentGroups);
     setIsGroupsDialogOpen(true);
   };
@@ -531,8 +531,7 @@ function AllUsersTab() {
                   lastName: '',
                   username: '',
                   email: '',
-                  role: 'instructor',
-                  status: 'active'
+                  role: 'instructor'
                 });
               }
             }}>
