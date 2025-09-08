@@ -792,29 +792,110 @@ export async function addInstructorGroupAssignment(instructorId: string, groupId
     const sheets = await getSheets();
     const mainSpreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID!;
 
-    // Get current data to find the next row
-    const response = await sheets.spreadsheets.values.get({
+    console.log(`Adding instructor ${instructorId} to group ${groupId} with role ${role}`);
+    
+    // Check if assignment already exists
+    const existingGroups = await getInstructorGroups();
+    const exists = existingGroups.some(ig => 
+      ig.instructor_id === instructorId && ig.group_id === groupId
+    );
+    
+    if (exists) {
+      console.log(`Assignment already exists for instructor ${instructorId} in group ${groupId}`);
+      return;
+    }
+
+    // Get current sheet data to find next row
+    const currentResponse = await sheets.spreadsheets.values.get({
       spreadsheetId: mainSpreadsheetId,
       range: 'InstructorGroups!A:F'
     });
+    
+    const currentRows = currentResponse.data.values || [];
+    const nextRow = currentRows.length + 1;
+    
+    console.log(`Current InstructorGroups has ${currentRows.length} rows, adding to row ${nextRow}`);
 
-    const rows = response.data.values || [];
-    const nextRow = rows.length + 1;
-
-    // Add new assignment
-    await sheets.spreadsheets.values.append({
+    // Use direct update instead of append
+    await sheets.spreadsheets.values.update({
       spreadsheetId: mainSpreadsheetId,
-      range: 'InstructorGroups!A:F',
+      range: `InstructorGroups!A${nextRow}:F${nextRow}`,
       valueInputOption: 'RAW',
       requestBody: {
         values: [[instructorId, groupId, role, '', '']] // instructor_id, group_id, role, start_date, end_date
       }
     });
 
-    console.log(`Added instructor ${instructorId} to group ${groupId} with role ${role}`);
+    console.log(`Successfully added instructor ${instructorId} to group ${groupId} with role ${role} at row ${nextRow}`);
+    
+    // Clear any caches that might be related to instructor groups
+    clearCache('instructor-groups');
+    
   } catch (error) {
     console.error('Error adding instructor group assignment:', error);
     throw new Error('Failed to add instructor group assignment to Google Sheets');
+  }
+}
+
+// Add multiple assignments at once
+export async function addMultipleInstructorAssignments(assignments: Array<{instructorId: string, groupId: string, role: string}>): Promise<void> {
+  try {
+    const sheets = await getSheets();
+    const mainSpreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID!;
+
+    console.log(`Adding ${assignments.length} instructor assignments`);
+    
+    // Check existing assignments
+    const existingGroups = await getInstructorGroups();
+    const newAssignments = assignments.filter(assignment => 
+      !existingGroups.some(ig => 
+        ig.instructor_id === assignment.instructorId && ig.group_id === assignment.groupId
+      )
+    );
+    
+    if (newAssignments.length === 0) {
+      console.log('All assignments already exist');
+      return;
+    }
+
+    // Get current sheet data
+    const currentResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: mainSpreadsheetId,
+      range: 'InstructorGroups!A:F'
+    });
+    
+    const currentRows = currentResponse.data.values || [];
+    const nextRow = currentRows.length + 1;
+    
+    // Prepare values for batch insert
+    const values = newAssignments.map(assignment => [
+      assignment.instructorId, 
+      assignment.groupId, 
+      assignment.role, 
+      '', 
+      ''
+    ]);
+    
+    const endRow = nextRow + values.length - 1;
+    
+    // Batch insert
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: mainSpreadsheetId,
+      range: `InstructorGroups!A${nextRow}:F${endRow}`,
+      valueInputOption: 'RAW',
+      requestBody: {
+        values
+      }
+    });
+
+    console.log(`Successfully added ${newAssignments.length} instructor assignments starting at row ${nextRow}`);
+    
+    // Clear cache
+    clearCache('instructor-groups');
+    
+  } catch (error) {
+    console.error('Error adding multiple instructor assignments:', error);
+    throw new Error('Failed to add instructor assignments to Google Sheets');
   }
 }
 
