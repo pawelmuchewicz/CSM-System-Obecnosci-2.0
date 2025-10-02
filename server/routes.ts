@@ -613,8 +613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userData = registerInstructorSchema.parse(req.body);
 
-      // Convert empty strings to undefined
-      const email = userData.email && userData.email.trim() !== '' ? userData.email : undefined;
+      // Convert empty phone to undefined (email is required)
       const phone = userData.phone && userData.phone.trim() !== '' ? userData.phone : undefined;
 
       // Check if username already exists
@@ -630,19 +629,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check if email already exists (only if provided)
-      if (email) {
-        const [existingEmail] = await db
-          .select({ id: instructorsAuth.id })
-          .from(instructorsAuth)
-          .where(eq(instructorsAuth.email, email));
+      // Check if email already exists
+      const [existingEmail] = await db
+        .select({ id: instructorsAuth.id })
+        .from(instructorsAuth)
+        .where(eq(instructorsAuth.email, userData.email));
 
-        if (existingEmail) {
-          return res.status(400).json({
-            message: "Adres email już istnieje",
-            code: "EMAIL_EXISTS"
-          });
-        }
+      if (existingEmail) {
+        return res.status(400).json({
+          message: "Adres email już istnieje",
+          code: "EMAIL_EXISTS"
+        });
       }
 
       // Hash password
@@ -656,7 +653,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           password: hashedPassword,
           firstName: userData.firstName,
           lastName: userData.lastName,
-          email: email,
+          email: userData.email,
           phone: phone,
           role: 'instructor',
           status: 'pending',

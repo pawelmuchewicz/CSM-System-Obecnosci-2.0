@@ -249,8 +249,8 @@ export const registerInstructorSchema = z.object({
   password: z.string().min(6, "Hasło musi mieć co najmniej 6 znaków"),
   firstName: z.string().min(2, "Imię musi mieć co najmniej 2 znaki"),
   lastName: z.string().min(2, "Nazwisko musi mieć co najmniej 2 znaki"),
-  email: z.string().email("Nieprawidłowy adres email").or(z.literal('')).optional(),
-  phone: z.string().optional(),
+  email: z.string().email("Nieprawidłowy adres email").min(1, "Email jest wymagany"),
+  phone: z.string().optional().or(z.literal('')),
 });
 
 export const updateUserStatusSchema = z.object({
