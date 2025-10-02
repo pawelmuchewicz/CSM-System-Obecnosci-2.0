@@ -259,6 +259,11 @@ export const updateUserStatusSchema = z.object({
   role: z.enum(["owner", "reception", "instructor"]).optional(),
 });
 
+export const approveUserSchema = z.object({
+  userId: z.number(),
+  role: z.enum(["owner", "reception", "instructor"]).optional(),
+});
+
 export const assignGroupSchema = z.object({
   instructorId: z.number(),
   groupId: z.string().min(1),

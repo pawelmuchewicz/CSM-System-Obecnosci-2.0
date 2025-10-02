@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { getGroups, getStudents, getAttendance, setAttendance, getInstructorGroups, getInstructorsForGroup, addInstructorGroupAssignment, getAttendanceReport, clearCache } from "./lib/sheets";
 import { sql } from "drizzle-orm";
-import { attendanceRequestSchema, loginSchema, instructorsAuth, instructorGroupAssignments, registerInstructorSchema, updateUserStatusSchema, assignGroupSchema, groupsConfig, createGroupConfigSchema, updateGroupConfigSchema } from "@shared/schema";
+import { attendanceRequestSchema, loginSchema, instructorsAuth, instructorGroupAssignments, registerInstructorSchema, updateUserStatusSchema, approveUserSchema, assignGroupSchema, groupsConfig, createGroupConfigSchema, updateGroupConfigSchema } from "@shared/schema";
 import { setupSession, requireAuth, optionalAuth, requireGroupAccess, hashPassword, verifyPassword, type AuthenticatedRequest } from "./auth";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -702,7 +702,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     try {
-      const { userId, role } = updateUserStatusSchema.parse(req.body);
+      const { userId, role } = approveUserSchema.parse(req.body);
       
       // Update user status and role
       const [updatedUser] = await db
