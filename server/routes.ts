@@ -667,9 +667,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Registration error:", error);
-      res.status(400).json({ 
+
+      // Handle Zod validation errors
+      if (error instanceof Error && error.name === 'ZodError') {
+        const zodError = error as any;
+        const firstError = zodError.errors?.[0];
+        return res.status(400).json({
+          message: firstError?.message || "Błąd walidacji danych",
+          code: "VALIDATION_ERROR"
+        });
+      }
+
+      res.status(400).json({
         message: "Błąd podczas rejestracji",
-        code: "REGISTRATION_ERROR" 
+        code: "REGISTRATION_ERROR"
       });
     }
   });

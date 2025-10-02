@@ -43,14 +43,28 @@ export default function RegisterPage() {
       });
     },
     onError: (error) => {
-      const errorMessage = error.message.includes('USERNAME_EXISTS') 
-        ? "Nazwa użytkownika już istnieje"
-        : error.message.includes('EMAIL_EXISTS')
-        ? "Adres email już istnieje"
-        : "Błąd podczas rejestracji";
-        
+      let errorMessage = "Błąd podczas rejestracji";
+
+      if (error.message.includes('USERNAME_EXISTS')) {
+        errorMessage = "Nazwa użytkownika już istnieje";
+      } else if (error.message.includes('EMAIL_EXISTS')) {
+        errorMessage = "Adres email już istnieje";
+      } else if (error.message.includes('VALIDATION_ERROR')) {
+        // Extract validation message from error
+        try {
+          const match = error.message.match(/"message":"([^"]+)"/);
+          if (match) {
+            errorMessage = match[1];
+          } else {
+            errorMessage = "Sprawdź poprawność wprowadzonych danych";
+          }
+        } catch {
+          errorMessage = "Sprawdź poprawność wprowadzonych danych";
+        }
+      }
+
       toast({
-        title: "Błąd",
+        title: "Błąd rejestracji",
         description: errorMessage,
         variant: "destructive",
       });

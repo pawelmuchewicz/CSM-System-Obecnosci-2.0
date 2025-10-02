@@ -36,9 +36,26 @@ export function LoginPage() {
     },
     onError: (error: any) => {
       console.error('Login error:', error);
+
+      let errorMessage = 'Nieprawidłowa nazwa użytkownika lub hasło';
+      let errorTitle = 'Błąd logowania';
+
+      // Parse error message to extract clean message
+      if (error.message) {
+        if (error.message.includes('ACCOUNT_PENDING_APPROVAL')) {
+          errorTitle = 'Konto oczekuje na akceptację';
+          errorMessage = 'Twoje konto oczekuje na zatwierdzenie przez administratora. Skontaktuj się z administratorem.';
+        } else if (error.message.includes('ACCOUNT_INACTIVE')) {
+          errorTitle = 'Konto nieaktywne';
+          errorMessage = 'Twoje konto zostało dezaktywowane. Skontaktuj się z administratorem.';
+        } else if (error.message.includes('INVALID_CREDENTIALS')) {
+          errorMessage = 'Nieprawidłowa nazwa użytkownika lub hasło';
+        }
+      }
+
       toast({
-        title: 'Błąd logowania',
-        description: error.message || 'Nieprawidłowa nazwa użytkownika lub hasło',
+        title: errorTitle,
+        description: errorMessage,
         variant: 'destructive',
       });
     },
