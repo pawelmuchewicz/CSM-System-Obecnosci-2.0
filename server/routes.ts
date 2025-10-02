@@ -612,38 +612,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/register", async (req, res) => {
     try {
       const userData = registerInstructorSchema.parse(req.body);
-      
+
+      // Convert empty strings to undefined
+      const email = userData.email && userData.email.trim() !== '' ? userData.email : undefined;
+      const phone = userData.phone && userData.phone.trim() !== '' ? userData.phone : undefined;
+
       // Check if username already exists
       const [existingUser] = await db
         .select({ id: instructorsAuth.id })
         .from(instructorsAuth)
         .where(eq(instructorsAuth.username, userData.username));
-        
+
       if (existingUser) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Nazwa użytkownika już istnieje",
-          code: "USERNAME_EXISTS" 
+          code: "USERNAME_EXISTS"
         });
       }
-      
-      // Check if email already exists
-      if (userData.email) {
+
+      // Check if email already exists (only if provided)
+      if (email) {
         const [existingEmail] = await db
           .select({ id: instructorsAuth.id })
           .from(instructorsAuth)
-          .where(eq(instructorsAuth.email, userData.email));
-          
+          .where(eq(instructorsAuth.email, email));
+
         if (existingEmail) {
-          return res.status(400).json({ 
+          return res.status(400).json({
             message: "Adres email już istnieje",
-            code: "EMAIL_EXISTS" 
+            code: "EMAIL_EXISTS"
           });
         }
       }
-      
+
       // Hash password
       const hashedPassword = await hashPassword(userData.password);
-      
+
       // Create user with pending status
       const [newUser] = await db
         .insert(instructorsAuth)
@@ -652,8 +656,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           password: hashedPassword,
           firstName: userData.firstName,
           lastName: userData.lastName,
-          email: userData.email,
-          phone: userData.phone,
+          email: email,
+          phone: phone,
           role: 'instructor',
           status: 'pending',
           active: false, // Kept for compatibility

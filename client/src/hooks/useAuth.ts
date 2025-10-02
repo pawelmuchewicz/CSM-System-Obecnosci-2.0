@@ -58,17 +58,14 @@ export function useLogout() {
     onSuccess: () => {
       // Clear all cached data
       queryClient.clear();
-      // Redirect to login
-      setLocation('/login');
-      // Reload to reset authentication state
-      window.location.reload();
+      // Redirect to login and reload in one action
+      window.location.href = '/login';
     },
     onError: (error) => {
       console.error('Logout error:', error);
       // Even if logout fails, clear cache and redirect
       queryClient.clear();
-      setLocation('/login');
-      window.location.reload();
+      window.location.href = '/login';
     },
   });
 }
