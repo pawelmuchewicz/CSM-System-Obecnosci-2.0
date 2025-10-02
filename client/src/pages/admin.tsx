@@ -35,6 +35,7 @@ interface User {
   role: string;
   status: string;
   active: boolean;
+  groupIds?: string[];
   createdAt: string;
   lastLoginAt?: string;
 }
@@ -438,7 +439,7 @@ function AllUsersTab() {
   const handleOpenGroupsDialog = (user: User) => {
     setGroupsEditingUser(user);
     // Get current user groups from database (groupIds)
-    const currentGroups: string[] = [];
+    const currentGroups: string[] = user.groupIds || [];
     setSelectedGroups(currentGroups);
     setIsGroupsDialogOpen(true);
   };
