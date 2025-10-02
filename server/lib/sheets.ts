@@ -909,13 +909,7 @@ export async function getInstructorsForGroup(groupId: string): Promise<(Instruct
     if (!groupId) {
       return [];
     }
-    
-    // Get all instructors from main spreadsheet - DISABLED, using only database now
-    // const allInstructors = await getInstructors();
-    
-    // Get instructor-group assignments from main spreadsheet
-    const instructorGroups = await getInstructorGroups();
-    
+
     // Get users from database who have access to this group
     const dbUsers = await db
       .select({
@@ -929,7 +923,7 @@ export async function getInstructorsForGroup(groupId: string): Promise<(Instruct
       })
       .from(instructorsAuth)
       .where(eq(instructorsAuth.active, true));
-    
+
     // Filter users who have access to this group
     const usersWithAccess = dbUsers.filter(user => {
       // Admins (owner, reception) have access to all groups
@@ -939,36 +933,24 @@ export async function getInstructorsForGroup(groupId: string): Promise<(Instruct
       // Regular instructors need explicit group assignment
       return user.groupIds && user.groupIds.includes(groupId);
     });
-    
-    // Filter instructors assigned to this group from Google Sheets - DISABLED
-    // const assignedInstructorIds = instructorGroups
-    //   .filter(ig => ig.group_id === groupId)
-    //   .map(ig => ig.instructor_id);
-    
-    // Initialize with empty array - using only database users now
+
+    // Build instructors list from database users only
     const instructorsForGroup: (Instructor & { role?: string })[] = [];
     
-    // Add system users with access to this group
+    // Add database users with access to this group
     usersWithAccess.forEach(user => {
-      // Check if this user is not already added from Google Sheets
-      const alreadyAdded = instructorsForGroup.some(i => 
-        i.first_name === user.firstName && i.last_name.trim() === user.lastName.trim()
-      );
-      
-      if (!alreadyAdded) {
-        instructorsForGroup.push({
-          id: `db-${user.id}`, // Prefix to distinguish from Google Sheets IDs
-          first_name: user.firstName,
-          last_name: user.lastName,
-          email: user.email || undefined,
-          phone: undefined,
-          specialization: undefined,
-          active: true,
-          role: user.role === 'owner' ? 'właściciel' : 
-                user.role === 'reception' ? 'recepcja' : 
-                'instruktor'
-        });
-      }
+      instructorsForGroup.push({
+        id: `db-${user.id}`,
+        first_name: user.firstName,
+        last_name: user.lastName,
+        email: user.email || undefined,
+        phone: undefined,
+        specialization: undefined,
+        active: true,
+        role: user.role === 'owner' ? 'właściciel' :
+              user.role === 'reception' ? 'recepcja' :
+              'instruktor'
+      });
     });
 
     // Sort by role priority (owners first, then reception, then instructors), then by name
