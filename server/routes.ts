@@ -35,19 +35,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(instructorsAuth)
         .where(eq(instructorsAuth.username, username));
 
-      if (!user || !user.active) {
-        return res.status(401).json({ 
+      if (!user) {
+        return res.status(401).json({
           message: "Nieprawidłowa nazwa użytkownika lub hasło",
-          code: "INVALID_CREDENTIALS" 
+          code: "INVALID_CREDENTIALS"
         });
       }
 
       // Verify password
       const passwordValid = await verifyPassword(password, user.password);
       if (!passwordValid) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           message: "Nieprawidłowa nazwa użytkownika lub hasło",
-          code: "INVALID_CREDENTIALS" 
+          code: "INVALID_CREDENTIALS"
+        });
+      }
+
+      // Check if user is pending approval
+      if (user.status === 'pending') {
+        return res.status(403).json({
+          message: "Twoje konto oczekuje na akceptację przez administratora",
+          code: "ACCOUNT_PENDING_APPROVAL"
+        });
+      }
+
+      // Check if user is active
+      if (!user.active || user.status === 'inactive') {
+        return res.status(403).json({
+          message: "Twoje konto zostało dezaktywowane. Skontaktuj się z administratorem.",
+          code: "ACCOUNT_INACTIVE"
         });
       }
 
