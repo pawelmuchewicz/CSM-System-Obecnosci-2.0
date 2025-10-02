@@ -958,7 +958,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // PATCH /api/admin/users/:id - Update user status
+  // PATCH /api/admin/users/:id - Update user information
   app.patch("/api/admin/users/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       // Only owners and reception can update users
@@ -970,37 +970,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const userId = parseInt(req.params.id);
-      const { active } = req.body;
+      const { firstName, lastName, email, role, active, status } = req.body;
 
-      if (typeof active !== 'boolean') {
+      if (!userId) {
         return res.status(400).json({
-          message: "Pole 'active' musi być typu boolean",
-          code: "INVALID_ACTIVE_VALUE"
+          message: "Nieprawidłowe ID użytkownika",
+          code: "INVALID_USER_ID"
         });
       }
 
-      // Update user
-      const [updatedUser] = await db
-        .update(instructorsAuth)
-        .set({
-          active,
-          status: active ? 'active' : 'inactive',
-          updatedAt: new Date()
-        })
-        .where(eq(instructorsAuth.id, userId))
-        .returning();
+      // Check if user exists
+      const [existingUser] = await db
+        .select()
+        .from(instructorsAuth)
+        .where(eq(instructorsAuth.id, userId));
 
-      if (!updatedUser) {
+      if (!existingUser) {
         return res.status(404).json({
           message: "Użytkownik nie został znaleziony",
           code: "USER_NOT_FOUND"
         });
       }
 
-      // NOTE: User sync to Google Sheets removed - using only database now
+      // Build update data - only update provided fields
+      const updateData: any = {
+        updatedAt: new Date()
+      };
+
+      if (firstName !== undefined) updateData.firstName = firstName;
+      if (lastName !== undefined) updateData.lastName = lastName;
+      if (email !== undefined) updateData.email = email;
+      if (role !== undefined) updateData.role = role;
+      if (active !== undefined) {
+        updateData.active = active;
+        // Auto-update status based on active flag if status not explicitly provided
+        if (status === undefined) {
+          updateData.status = active ? 'active' : 'inactive';
+        }
+      }
+      if (status !== undefined) updateData.status = status;
+
+      const [updatedUser] = await db
+        .update(instructorsAuth)
+        .set(updateData)
+        .where(eq(instructorsAuth.id, userId))
+        .returning();
 
       res.json({
-        message: "Status użytkownika został zaktualizowany",
+        message: "Użytkownik został zaktualizowany",
         user: updatedUser
       });
     } catch (error) {
@@ -1032,71 +1049,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // === USER SYNCHRONIZATION ROUTES ===
   // REMOVED: All user sync endpoints - using only database now
-
-  // PATCH /api/admin/users/:id - Update user information
-  app.patch("/api/admin/users/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
-    try {
-      // Only owners and reception can update users
-      if (!req.user?.permissions?.canManageUsers) {
-        return res.status(403).json({
-          message: "Brak uprawnień do edycji użytkowników",
-          code: "INSUFFICIENT_PERMISSIONS"
-        });
-      }
-
-      const userId = parseInt(req.params.id);
-      const { firstName, lastName, email, role, active } = req.body;
-
-      if (!userId) {
-        return res.status(400).json({
-          message: "Nieprawidłowe ID użytkownika",
-          code: "INVALID_USER_ID"
-        });
-      }
-
-      // Check if user exists
-      const [existingUser] = await db
-        .select()
-        .from(instructorsAuth)
-        .where(eq(instructorsAuth.id, userId));
-
-      if (!existingUser) {
-        return res.status(404).json({
-          message: "Użytkownik nie został znaleziony",
-          code: "USER_NOT_FOUND"
-        });
-      }
-
-      // Update user
-      const updateData: any = {
-        firstName,
-        lastName,
-        email,
-        role: role as any,
-        updatedAt: new Date()
-      };
-      
-      // Only update active/status if provided
-      if (active !== undefined) updateData.active = active;
-      if (req.body.status !== undefined) updateData.status = req.body.status;
-      
-      await db
-        .update(instructorsAuth)
-        .set(updateData)
-        .where(eq(instructorsAuth.id, userId));
-
-      res.json({
-        message: "Użytkownik został zaktualizowany",
-        userId
-      });
-    } catch (error) {
-      console.error("Error updating user:", error);
-      res.status(500).json({
-        message: "Błąd podczas aktualizacji użytkownika",
-        code: "USER_UPDATE_ERROR"
-      });
-    }
-  });
+  // Note: PATCH /api/admin/users/:id endpoint is now consolidated above (line 961)
 
   // PUT /api/admin/users/:id/groups - Update user's assigned groups
   app.put("/api/admin/users/:id/groups", requireAuth, async (req: AuthenticatedRequest, res) => {
