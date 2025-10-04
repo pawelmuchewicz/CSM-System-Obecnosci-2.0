@@ -9,6 +9,7 @@ import { fetchGroups, fetchStudents, fetchAttendance, saveAttendance, invalidate
 import type { AttendanceItem } from "@shared/schema";
 import { ConfirmationModal } from "@/components/confirmation-modal";
 import { useAuth } from "@/hooks/useAuth";
+import { AddStudentModal } from "@/components/add-student-modal";
 
 export default function AttendancePage() {
   const { toast } = useToast();
@@ -23,6 +24,7 @@ export default function AttendancePage() {
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [pendingSaveData, setPendingSaveData] = useState<{ groupId: string; date: string; items: AttendanceItem[] } | null>(null);
   const [showInactive, setShowInactive] = useState(false);
+  const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
 
   // Fetch groups
   const { data: groupsData, isLoading: groupsLoading } = useQuery({
@@ -270,6 +272,7 @@ export default function AttendancePage() {
           isSaving={saveAttendanceMutation.isPending}
           showInactive={showInactive}
           onShowInactiveChange={setShowInactive}
+          onAddStudent={() => setIsAddStudentModalOpen(true)}
         />
 
         {/* Conflict Banner */}
@@ -323,6 +326,13 @@ export default function AttendancePage() {
         description={`Frekwencja dla tej grupy i daty została już wcześniej zapisana. Czy na pewno chcesz wprowadzić zmiany? Poprzednie dane zostaną zastąpione nowymi.`}
         confirmText="Tak, zapisz zmiany"
         cancelText="Anuluj"
+      />
+
+      {/* Add Student Modal */}
+      <AddStudentModal
+        isOpen={isAddStudentModalOpen}
+        onClose={() => setIsAddStudentModalOpen(false)}
+        groupId={selectedGroup}
       />
     </div>
   );

@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { CheckCheck, Save, Users, Eye, EyeOff } from "lucide-react";
+import { CheckCheck, Save, Users, Eye, EyeOff, UserPlus } from "lucide-react";
 import type { Group } from "@shared/schema";
 
 interface ToolbarProps {
@@ -21,6 +21,7 @@ interface ToolbarProps {
   isSaving: boolean;
   showInactive: boolean;
   onShowInactiveChange: (show: boolean) => void;
+  onAddStudent?: () => void;
 }
 
 export function Toolbar({
@@ -36,7 +37,8 @@ export function Toolbar({
   hasChanges,
   isSaving,
   showInactive,
-  onShowInactiveChange
+  onShowInactiveChange,
+  onAddStudent
 }: ToolbarProps) {
   return (
     <div className="bg-white rounded-lg shadow-md border border-gray-200 p-3 sm:p-4 mb-6">
@@ -111,6 +113,21 @@ export function Toolbar({
 
         {/* Action Buttons */}
         <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+          {/* Add Student Button */}
+          {onAddStudent && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onAddStudent}
+              disabled={!selectedGroup}
+              className="w-full sm:w-auto text-sm border-2 border-green-500 text-green-700 hover:bg-green-50 hover:border-green-600 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-white"
+            >
+              <UserPlus className="w-4 h-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <span className="hidden sm:inline">Dodaj ucznia</span>
+              <span className="sm:hidden">Dodaj</span>
+            </Button>
+          )}
+
           {/* Toggle All Attendance Button */}
           <Button
             type="button"

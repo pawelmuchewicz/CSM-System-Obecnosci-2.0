@@ -8,6 +8,7 @@ import { MoreVertical } from "lucide-react";
 import type { Student, AttendanceItem } from "@shared/schema";
 import { StudentDetailsModal } from './student-details-modal';
 import { InstructorsSection } from './instructors-section';
+import { ExpelStudentModal } from './expel-student-modal';
 import { useAuth } from "@/hooks/useAuth";
 
 interface AttendanceTableProps {
@@ -33,6 +34,8 @@ export function AttendanceTable({
 }: AttendanceTableProps) {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [studentToExpel, setStudentToExpel] = useState<Student | null>(null);
+  const [isExpelModalOpen, setIsExpelModalOpen] = useState(false);
   const { user } = useAuth();
 
   const handleStudentClick = (student: Student) => {
@@ -43,6 +46,17 @@ export function AttendanceTable({
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedStudent(null);
+  };
+
+  const handleExpelClick = (student: Student, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setStudentToExpel(student);
+    setIsExpelModalOpen(true);
+  };
+
+  const handleCloseExpelModal = () => {
+    setIsExpelModalOpen(false);
+    setStudentToExpel(null);
   };
   // Liczenie wszystkich kategorii - używaj allStudents dla statystyk
   const activeStudents = students.filter(s => s.active);
@@ -106,29 +120,44 @@ export function AttendanceTable({
               const studentAttendance = attendance.get(student.id);
               const isPresent = studentAttendance?.status === 'obecny';
               const isInactive = !student.active;
+              const isPending = student.status === 'pending';
+
+              // Date filtering logic
+              const selectedDateObj = new Date(selectedDate);
+              const isBeforeStartDate = student.start_date && new Date(student.start_date) > selectedDateObj;
+              const isAfterEndDate = student.end_date && new Date(student.end_date) < selectedDateObj;
+              const shouldBeHidden = isBeforeStartDate || isAfterEndDate;
+
+              // Don't render if outside date range
+              if (shouldBeHidden && !isPending && student.active) {
+                return null;
+              }
 
               return (
-                <TableRow 
-                  key={student.id} 
+                <TableRow
+                  key={student.id}
                   className={`transition-colors duration-150 ${
-                    isInactive 
-                      ? 'opacity-50 bg-gray-100' 
-                      : isPresent 
-                        ? 'bg-green-50 hover:bg-gray-50' 
-                        : 'hover:bg-gray-50'
+                    isPending
+                      ? 'bg-yellow-50 hover:bg-yellow-100 border-l-4 border-yellow-400'
+                      : isInactive
+                        ? 'opacity-50 bg-gray-100'
+                        : isPresent
+                          ? 'bg-green-50 hover:bg-gray-50'
+                          : 'hover:bg-gray-50'
                   }`}
                   data-testid={`row-student-${student.id}`}
                 >
                   <TableCell className="font-medium" data-testid={`text-firstname-${student.id}`}>
-                    <div className="flex items-center">
-                      {isPresent && !isInactive && <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>}
-                      <span className={isPresent && !isInactive ? 'text-green-700 font-semibold' : ''}>
+                    <div className="flex items-center gap-2">
+                      {isPresent && !isInactive && !isPending && <div className="w-2 h-2 bg-green-500 rounded-full"></div>}
+                      {isPending && <span className="text-yellow-600">⏳</span>}
+                      <span className={isPresent && !isInactive && !isPending ? 'text-green-700 font-semibold' : isPending ? 'text-yellow-800' : ''}>
                         {student.first_name}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell data-testid={`text-lastname-${student.id}`}>
-                    <span className={isPresent && !isInactive ? 'text-green-700 font-semibold' : ''}>
+                    <span className={isPresent && !isInactive && !isPending ? 'text-green-700 font-semibold' : isPending ? 'text-yellow-800' : ''}>
                       {student.last_name}
                     </span>
                   </TableCell>
@@ -142,7 +171,16 @@ export function AttendanceTable({
                     </span>
                   </TableCell>
                   <TableCell className="text-center">
-                    {isInactive ? (
+                    {isPending ? (
+                      <div className="flex flex-col items-center space-y-2">
+                        <Badge variant="secondary" className="bg-yellow-200 text-yellow-800 font-medium border border-yellow-400">
+                          ⏳ OCZEKUJE
+                        </Badge>
+                        <span className="text-xs text-yellow-700">
+                          Wymaga zatwierdzenia
+                        </span>
+                      </div>
+                    ) : isInactive ? (
                       <div className="flex flex-col items-center space-y-2">
                         <Badge variant="secondary" className="bg-gray-200 text-gray-600 font-medium">
                           WYPISANY
@@ -171,28 +209,25 @@ export function AttendanceTable({
                         <div className="flex items-center gap-2">
                           <Switch
                             checked={studentAttendance?.status === 'obecny'}
-                            onCheckedChange={(checked) => 
+                            onCheckedChange={(checked) =>
                               onAttendanceChange(student.id, checked ? 'obecny' : 'nieobecny')
                             }
+                            disabled={isPending}
                             className={`transition-colors duration-200 ${
-                              studentAttendance?.status === 'obecny' 
-                                ? 'data-[state=checked]:bg-green-600 bg-green-600' 
+                              studentAttendance?.status === 'obecny'
+                                ? 'data-[state=checked]:bg-green-600 bg-green-600'
                                 : 'data-[state=unchecked]:bg-red-500 bg-red-500'
                             }`}
                             data-testid={`switch-attendance-${student.id}`}
                             aria-label={`Oznacz ${student.first_name} ${student.last_name} jako ${studentAttendance?.status === 'obecny' ? 'nieobecną' : 'obecną'}`}
                           />
-                          {(user?.role === 'owner' || user?.role === 'reception') && (
+                          {(user?.role === 'owner' || user?.role === 'reception') && !isPending && (
                             <Button
                               size="sm"
-                              variant={studentAttendance?.status === 'wypisani' ? 'default' : 'outline'}
-                              className={`px-2 py-1 text-xs ml-1 ${
-                                studentAttendance?.status === 'wypisani' 
-                                  ? 'bg-gray-500 hover:bg-gray-600 text-white' 
-                                  : 'hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300'
-                              }`}
-                              onClick={() => onAttendanceChange(student.id, 'wypisani')}
-                              data-testid={`button-expelled-${student.id}`}
+                              variant="outline"
+                              className="px-2 py-1 text-xs ml-1 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+                              onClick={(e) => handleExpelClick(student, e)}
+                              data-testid={`button-expel-${student.id}`}
                               title="Wypisz ucznia (tylko właściciel i recepcja)"
                             >
                               ⊘
@@ -276,6 +311,12 @@ export function AttendanceTable({
         groupName={selectedGroupName}
         currentAttendance={selectedStudent ? attendance.get(selectedStudent.id) : undefined}
         onNotesUpdate={onNotesUpdate}
+      />
+
+      <ExpelStudentModal
+        isOpen={isExpelModalOpen}
+        onClose={handleCloseExpelModal}
+        student={studentToExpel}
       />
     </div>
   );

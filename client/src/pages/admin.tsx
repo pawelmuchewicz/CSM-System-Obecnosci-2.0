@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserCheck, UserX, Settings, Plus, RefreshCw, AlertCircle, Edit2 as Edit, Trash2, Sheet, ExternalLink } from "lucide-react";
+import { Users, UserCheck, UserX, Settings, Plus, RefreshCw, AlertCircle, Edit2 as Edit, Trash2, Sheet, ExternalLink, GraduationCap } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { Group } from "@shared/schema";
+import { PendingStudentsTab } from "@/components/pending-students-tab";
 
 interface PendingUser {
   id: number;
@@ -144,14 +145,18 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="pending-users" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-1">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 gap-1">
           <TabsTrigger value="pending-users" data-testid="tab-pending-users" className="text-xs md:text-sm">
             <UserCheck className="w-4 h-4 md:mr-2" />
-            <span className="hidden sm:inline ml-1">Oczekujące</span>
+            <span className="hidden sm:inline ml-1">Konta</span>
+          </TabsTrigger>
+          <TabsTrigger value="pending-students" data-testid="tab-pending-students" className="text-xs md:text-sm">
+            <GraduationCap className="w-4 h-4 md:mr-2" />
+            <span className="hidden sm:inline ml-1">Uczniowie</span>
           </TabsTrigger>
           <TabsTrigger value="all-users" data-testid="tab-all-users" className="text-xs md:text-sm">
             <Users className="w-4 h-4 md:mr-2" />
-            <span className="hidden sm:inline ml-1">Użytkownicy</span>
+            <span className="hidden sm:inline ml-1">Zarządzanie</span>
           </TabsTrigger>
           <TabsTrigger value="sheets-config" data-testid="tab-sheets-config" className="text-xs md:text-sm">
             <Sheet className="w-4 h-4 md:mr-2" />
@@ -232,6 +237,10 @@ export default function AdminPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="pending-students">
+          <PendingStudentsTab />
         </TabsContent>
 
         <TabsContent value="all-users">
