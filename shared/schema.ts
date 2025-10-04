@@ -28,6 +28,11 @@ export type Student = {
   class?: string;
   phone?: string;
   mail?: string;
+  status?: 'active' | 'pending' | 'inactive';
+  start_date?: string;  // YYYY-MM-DD format
+  end_date?: string;    // YYYY-MM-DD format
+  added_by?: string;    // User ID who added this student
+  created_at?: string;  // ISO timestamp
 };
 
 export type AttendanceItem = {
@@ -269,6 +274,27 @@ export const assignGroupSchema = z.object({
   groupId: z.string().min(1),
   canManageStudents: z.boolean().default(false),
   canViewReports: z.boolean().default(true),
+});
+
+// Student management schemas
+export const addStudentSchema = z.object({
+  firstName: z.string().min(2, "Imię musi mieć co najmniej 2 znaki"),
+  lastName: z.string().min(2, "Nazwisko musi mieć co najmniej 2 znaki"),
+  groupId: z.string().min(1, "Grupa jest wymagana"),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Nieprawidłowy format daty (YYYY-MM-DD)"),
+  class: z.string().optional(),
+  phone: z.string().optional(),
+  mail: z.string().email("Nieprawidłowy adres email").optional().or(z.literal('')),
+});
+
+export const approveStudentSchema = z.object({
+  studentId: z.string().min(1),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')),
+});
+
+export const expelStudentSchema = z.object({
+  studentId: z.string().min(1),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Nieprawidłowy format daty (YYYY-MM-DD)"),
 });
 
 // Group configuration schemas

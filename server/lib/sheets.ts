@@ -292,7 +292,7 @@ export async function getStudents(groupId?: string, showInactive: boolean = fals
     
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Students!A1:H2000' // Include mail column
+      range: 'Students!A1:M2000' // Include new columns: status, start_date, end_date, added_by, created_at
     });
 
     const rows = response.data.values || [];
@@ -342,6 +342,30 @@ export async function getStudents(groupId?: string, showInactive: boolean = fals
           case 'mail':
           case 'email':
             student.mail = value ? String(value).trim() : undefined;
+            break;
+          case 'status':
+            const statusStr = String(value || 'active').toLowerCase().trim();
+            if (['active', 'pending', 'inactive'].includes(statusStr)) {
+              student.status = statusStr as 'active' | 'pending' | 'inactive';
+            } else {
+              student.status = 'active'; // default
+            }
+            break;
+          case 'start_date':
+          case 'startdate':
+            student.start_date = value ? String(value).trim() : undefined;
+            break;
+          case 'end_date':
+          case 'enddate':
+            student.end_date = value ? String(value).trim() : undefined;
+            break;
+          case 'added_by':
+          case 'addedby':
+            student.added_by = value ? String(value).trim() : undefined;
+            break;
+          case 'created_at':
+          case 'createdat':
+            student.created_at = value ? String(value).trim() : undefined;
             break;
         }
       });
