@@ -434,6 +434,178 @@ export async function getStudents(groupId?: string, showInactive: boolean = fals
   }
 }
 
+export async function addStudent(studentData: {
+  groupId: string;
+  firstName: string;
+  lastName: string;
+  startDate: string;
+  class?: string;
+  phone?: string;
+  mail?: string;
+  addedBy: string;
+}): Promise<string> {
+  try {
+    const sheets = await getSheets();
+    const spreadsheetId = await getSpreadsheetId(studentData.groupId);
+
+    // Generate unique ID for student
+    const timestamp = Date.now();
+    const studentId = `${studentData.groupId}-${timestamp}`;
+
+    // Get group's sheetGroupId for consistency
+    const config = GROUPS_CONFIG[studentData.groupId];
+    const sheetGroupId = config?.sheetGroupId || studentData.groupId;
+
+    // Prepare row data (columns A-M)
+    const rowData = [
+      studentId,                          // A: id
+      studentData.firstName,              // B: first_name
+      studentData.lastName,               // C: last_name
+      sheetGroupId,                       // D: group_id
+      'TRUE',                             // E: active (new students are active by default)
+      studentData.class || '',            // F: class
+      studentData.phone || '',            // G: phone
+      studentData.mail || '',             // H: mail
+      'pending',                          // I: status (pending approval)
+      studentData.startDate,              // J: start_date
+      '',                                 // K: end_date (empty initially)
+      studentData.addedBy,                // L: added_by
+      new Date().toISOString(),           // M: created_at
+    ];
+
+    // Append to Students sheet
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'Students!A:M',
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [rowData]
+      }
+    });
+
+    // Clear cache for this group
+    clearCache(`students:${studentData.groupId}`);
+
+    return studentId;
+  } catch (error) {
+    console.error('Failed to add student:', error);
+    throw new Error('Failed to add student to Google Sheets');
+  }
+}
+
+export async function approveStudent(studentId: string, groupId: string, endDate?: string): Promise<void> {
+  try {
+    const sheets = await getSheets();
+    const spreadsheetId = await getSpreadsheetId(groupId);
+
+    // Get all students to find the row
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'Students!A:M'
+    });
+
+    const rows = response.data.values || [];
+    let rowIndex = -1;
+
+    // Find student row
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][0] === studentId) {
+        rowIndex = i + 1; // +1 because sheets are 1-indexed
+        break;
+      }
+    }
+
+    if (rowIndex === -1) {
+      throw new Error('Student not found');
+    }
+
+    // Update status to 'active' (column I) and optionally end_date (column K)
+    const updates = [
+      {
+        range: `Students!I${rowIndex}`,
+        values: [['active']]
+      }
+    ];
+
+    if (endDate) {
+      updates.push({
+        range: `Students!K${rowIndex}`,
+        values: [[endDate]]
+      });
+    }
+
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        valueInputOption: 'RAW',
+        data: updates
+      }
+    });
+
+    // Clear cache
+    clearCache(`students:${groupId}`);
+  } catch (error) {
+    console.error('Failed to approve student:', error);
+    throw new Error('Failed to approve student');
+  }
+}
+
+export async function expelStudent(studentId: string, groupId: string, endDate: string): Promise<void> {
+  try {
+    const sheets = await getSheets();
+    const spreadsheetId = await getSpreadsheetId(groupId);
+
+    // Get all students to find the row
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'Students!A:M'
+    });
+
+    const rows = response.data.values || [];
+    let rowIndex = -1;
+
+    // Find student row
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][0] === studentId) {
+        rowIndex = i + 1;
+        break;
+      }
+    }
+
+    if (rowIndex === -1) {
+      throw new Error('Student not found');
+    }
+
+    // Update active to FALSE (column E), status to 'inactive' (column I), and end_date (column K)
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        valueInputOption: 'RAW',
+        data: [
+          {
+            range: `Students!E${rowIndex}`,
+            values: [['FALSE']]
+          },
+          {
+            range: `Students!I${rowIndex}`,
+            values: [['inactive']]
+          },
+          {
+            range: `Students!K${rowIndex}`,
+            values: [[endDate]]
+          }
+        ]
+      }
+    });
+
+    // Clear cache
+    clearCache(`students:${groupId}`);
+  } catch (error) {
+    console.error('Failed to expel student:', error);
+    throw new Error('Failed to expel student');
+  }
+}
+
 export async function findOrCreateSession(groupId: string, dateISO: string): Promise<string> {
   try {
     const sheets = await getSheets();

@@ -1,8 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { getGroups, getStudents, getAttendance, setAttendance, getInstructorGroups, getInstructorsForGroup, addInstructorGroupAssignment, getAttendanceReport, clearCache } from "./lib/sheets";
+import { getGroups, getStudents, getAttendance, setAttendance, getInstructorGroups, getInstructorsForGroup, addInstructorGroupAssignment, getAttendanceReport, clearCache, addStudent, approveStudent, expelStudent } from "./lib/sheets";
 import { sql } from "drizzle-orm";
-import { attendanceRequestSchema, loginSchema, instructorsAuth, instructorGroupAssignments, registerInstructorSchema, updateUserStatusSchema, approveUserSchema, assignGroupSchema, groupsConfig, createGroupConfigSchema, updateGroupConfigSchema } from "@shared/schema";
+import { attendanceRequestSchema, loginSchema, instructorsAuth, instructorGroupAssignments, registerInstructorSchema, updateUserStatusSchema, approveUserSchema, assignGroupSchema, groupsConfig, createGroupConfigSchema, updateGroupConfigSchema, addStudentSchema, approveStudentSchema, expelStudentSchema } from "@shared/schema";
 import { setupSession, requireAuth, optionalAuth, requireGroupAccess, hashPassword, verifyPassword, type AuthenticatedRequest } from "./auth";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -195,6 +195,162 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(502).json({ 
         message: "Failed to fetch students from Google Sheets",
         hint: "Ensure the sheet is shared with the service account as Editor"
+      });
+    }
+  });
+
+  // POST /api/students - Add new student (instructors only, to their assigned groups)
+  app.post("/api/students", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const data = addStudentSchema.parse(req.body);
+
+      // Check if user has access to this group
+      const userGroupIds = req.user?.groupIds || [];
+      const userRole = req.user?.role;
+
+      // Owner and reception can add to any group, instructors only to their groups
+      if (userRole !== 'owner' && userRole !== 'reception') {
+        if (!userGroupIds.includes(data.groupId)) {
+          return res.status(403).json({
+            message: "Brak uprawnień do dodawania uczniów do tej grupy",
+            code: "INSUFFICIENT_PERMISSIONS"
+          });
+        }
+      }
+
+      const studentId = await addStudent({
+        groupId: data.groupId,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        startDate: data.startDate,
+        class: data.class,
+        phone: data.phone,
+        mail: data.mail,
+        addedBy: String(req.user?.id),
+      });
+
+      res.status(201).json({
+        message: "Uczeń został dodany i oczekuje na zatwierdzenie",
+        studentId
+      });
+    } catch (error) {
+      console.error("Error adding student:", error);
+
+      // Handle Zod validation errors
+      if (error instanceof Error && error.name === 'ZodError') {
+        const zodError = error as any;
+        const firstError = zodError.errors?.[0];
+        return res.status(400).json({
+          message: firstError?.message || "Błąd walidacji danych",
+          code: "VALIDATION_ERROR"
+        });
+      }
+
+      res.status(500).json({
+        message: "Błąd podczas dodawania ucznia",
+        code: "ADD_STUDENT_ERROR"
+      });
+    }
+  });
+
+  // GET /api/admin/pending-students - Get all pending students (admin only)
+  app.get("/api/admin/pending-students", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      if (!req.user?.permissions?.canManageUsers) {
+        return res.status(403).json({
+          message: "Brak uprawnień do zarządzania uczniami",
+          code: "INSUFFICIENT_PERMISSIONS"
+        });
+      }
+
+      // Get all groups
+      const groups = await getGroups();
+      const allPendingStudents: any[] = [];
+
+      // Fetch students from each group and filter pending ones
+      for (const group of groups) {
+        const students = await getStudents(group.id, true); // include inactive
+        const pendingInGroup = students.filter(s => s.status === 'pending');
+
+        // Add group name to each student
+        pendingInGroup.forEach(student => {
+          allPendingStudents.push({
+            ...student,
+            groupName: group.name
+          });
+        });
+      }
+
+      res.json({ students: allPendingStudents });
+    } catch (error) {
+      console.error("Error fetching pending students:", error);
+      res.status(500).json({
+        message: "Błąd podczas pobierania oczekujących uczniów",
+        code: "FETCH_PENDING_ERROR"
+      });
+    }
+  });
+
+  // POST /api/admin/approve-student - Approve pending student (admin only)
+  app.post("/api/admin/approve-student", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      if (!req.user?.permissions?.canManageUsers) {
+        return res.status(403).json({
+          message: "Brak uprawnień do zatwierdzania uczniów",
+          code: "INSUFFICIENT_PERMISSIONS"
+        });
+      }
+
+      const data = approveStudentSchema.parse(req.body);
+
+      // Extract groupId from studentId (format: groupId-timestamp)
+      const groupId = data.studentId.split('-')[0];
+
+      await approveStudent(
+        data.studentId,
+        groupId,
+        data.endDate && data.endDate.trim() !== '' ? data.endDate : undefined
+      );
+
+      res.json({
+        message: "Uczeń został zatwierdzony",
+        studentId: data.studentId
+      });
+    } catch (error) {
+      console.error("Error approving student:", error);
+      res.status(500).json({
+        message: "Błąd podczas zatwierdzania ucznia",
+        code: "APPROVE_STUDENT_ERROR"
+      });
+    }
+  });
+
+  // PATCH /api/admin/expel-student - Expel student with end date (admin only)
+  app.patch("/api/admin/expel-student", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      if (!req.user?.permissions?.canManageUsers) {
+        return res.status(403).json({
+          message: "Brak uprawnień do wypisywania uczniów",
+          code: "INSUFFICIENT_PERMISSIONS"
+        });
+      }
+
+      const data = expelStudentSchema.parse(req.body);
+
+      // Extract groupId from studentId
+      const groupId = data.studentId.split('-')[0];
+
+      await expelStudent(data.studentId, groupId, data.endDate);
+
+      res.json({
+        message: "Uczeń został wypisany",
+        studentId: data.studentId
+      });
+    } catch (error) {
+      console.error("Error expelling student:", error);
+      res.status(500).json({
+        message: "Błąd podczas wypisywania ucznia",
+        code: "EXPEL_STUDENT_ERROR"
       });
     }
   });
