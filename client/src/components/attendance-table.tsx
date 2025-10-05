@@ -101,17 +101,24 @@ export function AttendanceTable({
         </p>
       </div>
 
-      {/* Table Container with Horizontal Scroll */}
+      {/* Table Container - Responsive */}
       <div className="overflow-x-auto">
         <Table>
-          {/* Sticky Header */}
+          {/* Sticky Header - Hidden on mobile, full on desktop */}
           <TableHeader className="bg-gray-50 sticky top-0 z-10">
             <TableRow>
-              <TableHead className="text-left">Imię</TableHead>
-              <TableHead className="text-left">Nazwisko</TableHead>
-              <TableHead className="text-center">Klasa</TableHead>
-              <TableHead className="text-center">Status</TableHead>
-              <TableHead className="text-center">Akcje</TableHead>
+              {/* Mobile: combine name columns */}
+              <TableHead className="text-left w-auto">
+                <span className="hidden md:inline">Imię</span>
+                <span className="md:hidden">Uczeń</span>
+              </TableHead>
+              <TableHead className="text-left hidden md:table-cell w-auto">Nazwisko</TableHead>
+              <TableHead className="text-center hidden md:table-cell w-24">Klasa</TableHead>
+              <TableHead className="text-center w-32 md:w-40">Status</TableHead>
+              <TableHead className="text-center w-12 md:w-16">
+                <span className="hidden md:inline">Akcje</span>
+                <span className="md:hidden">•••</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
 
@@ -152,53 +159,65 @@ export function AttendanceTable({
                   }`}
                   data-testid={`row-student-${student.id}`}
                 >
+                  {/* Name column - combines first+last name on mobile, shows class badge */}
                   <TableCell className="font-medium" data-testid={`text-firstname-${student.id}`}>
-                    <div className="flex items-center gap-2">
-                      {isPresent && !isInactive && !isPending && <div className="w-2 h-2 bg-green-500 rounded-full"></div>}
-                      {isPending && <span className="text-yellow-600">⏳</span>}
-                      <span className={isPresent && !isInactive && !isPending ? 'text-green-700 font-semibold' : isPending ? 'text-yellow-800' : ''}>
-                        {student.first_name}
+                    <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
+                      <div className="flex items-center gap-2">
+                        {isPresent && !isInactive && !isPending && <div className="w-2 h-2 bg-green-500 rounded-full"></div>}
+                        {isPending && <span className="text-yellow-600">⏳</span>}
+                        <span className={isPresent && !isInactive && !isPending ? 'text-green-700 font-semibold' : isPending ? 'text-yellow-800' : ''}>
+                          <span className="md:hidden">{student.first_name} {student.last_name}</span>
+                          <span className="hidden md:inline">{student.first_name}</span>
+                        </span>
+                      </div>
+                      {/* Class badge on mobile - inline with name */}
+                      <span className={`md:hidden inline-block text-xs font-medium px-1.5 py-0.5 rounded ${
+                        isInactive ? 'bg-gray-100 text-gray-500' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {student.class || '--'}
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell data-testid={`text-lastname-${student.id}`}>
+                  {/* Desktop: Separate last name column */}
+                  <TableCell className="hidden md:table-cell" data-testid={`text-lastname-${student.id}`}>
                     <span className={isPresent && !isInactive && !isPending ? 'text-green-700 font-semibold' : isPending ? 'text-yellow-800' : ''}>
                       {student.last_name}
                     </span>
                   </TableCell>
-                  <TableCell className="text-center" data-testid={`text-class-${student.id}`}>
+                  {/* Desktop: Separate class column */}
+                  <TableCell className="text-center hidden md:table-cell w-24" data-testid={`text-class-${student.id}`}>
                     <span className={`text-sm font-medium px-2 py-1 rounded-md ${
-                      isInactive 
-                        ? 'bg-gray-100 text-gray-500' 
+                      isInactive
+                        ? 'bg-gray-100 text-gray-500'
                         : 'bg-blue-100 text-blue-800'
                     }`}>
                       {student.class || '--'}
                     </span>
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-center w-32 md:w-40">
                     {isPending ? (
-                      <div className="flex flex-col items-center space-y-2">
-                        <Badge variant="secondary" className="bg-yellow-200 text-yellow-800 font-medium border border-yellow-400">
+                      <div className="flex flex-col items-center space-y-1 md:space-y-2">
+                        <Badge variant="secondary" className="bg-yellow-200 text-yellow-800 font-medium border border-yellow-400 text-xs md:text-sm">
                           ⏳ OCZEKUJE
                         </Badge>
-                        <span className="text-xs text-yellow-700">
+                        <span className="text-xs text-yellow-700 hidden md:inline">
                           Wymaga zatwierdzenia
                         </span>
                       </div>
                     ) : isInactive ? (
-                      <div className="flex flex-col items-center space-y-2">
-                        <Badge variant="secondary" className="bg-gray-200 text-gray-600 font-medium">
+                      <div className="flex flex-col items-center space-y-1 md:space-y-2">
+                        <Badge variant="secondary" className="bg-gray-200 text-gray-600 font-medium text-xs md:text-sm">
                           WYPISANY
                         </Badge>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 md:gap-2">
                           <Switch
                             checked={studentAttendance?.status === 'obecny'}
-                            onCheckedChange={(checked) => 
+                            onCheckedChange={(checked) =>
                               onAttendanceChange(student.id, checked ? 'obecny' : 'nieobecny')
                             }
-                            className={`transition-colors duration-200 ${
-                              studentAttendance?.status === 'obecny' 
-                                ? 'data-[state=checked]:bg-green-600 bg-green-600' 
+                            className={`transition-colors duration-200 scale-90 md:scale-100 ${
+                              studentAttendance?.status === 'obecny'
+                                ? 'data-[state=checked]:bg-green-600 bg-green-600'
                                 : 'data-[state=unchecked]:bg-white border border-gray-300'
                             } data-[state=checked]:bg-red-500 hover:data-[state=checked]:bg-red-600`}
                             data-testid={`switch-inactive-attendance-${student.id}`}
@@ -210,15 +229,15 @@ export function AttendanceTable({
                         </span>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center space-y-2">
-                        <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-center space-y-1 md:space-y-2">
+                        <div className="flex items-center gap-1 md:gap-2">
                           <Switch
                             checked={studentAttendance?.status === 'obecny'}
                             onCheckedChange={(checked) =>
                               onAttendanceChange(student.id, checked ? 'obecny' : 'nieobecny')
                             }
                             disabled={isPending}
-                            className={`transition-colors duration-200 ${
+                            className={`transition-colors duration-200 scale-90 md:scale-100 ${
                               studentAttendance?.status === 'obecny'
                                 ? 'data-[state=checked]:bg-green-600 bg-green-600'
                                 : 'data-[state=unchecked]:bg-red-500 bg-red-500'
@@ -230,7 +249,7 @@ export function AttendanceTable({
                             <Button
                               size="sm"
                               variant="outline"
-                              className="px-2 py-1 text-xs ml-1 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+                              className="px-1.5 py-0.5 md:px-2 md:py-1 text-xs hover:bg-red-50 hover:text-red-700 hover:border-red-300"
                               onClick={(e) => handleExpelClick(student, e)}
                               data-testid={`button-expel-${student.id}`}
                               title="Wypisz ucznia (tylko właściciel i recepcja)"
@@ -239,28 +258,28 @@ export function AttendanceTable({
                             </Button>
                           )}
                         </div>
-                        <span 
+                        <span
                           className={`text-xs font-medium ${
-                            studentAttendance?.status === 'obecny' ? 'text-green-700' : 
+                            studentAttendance?.status === 'obecny' ? 'text-green-700' :
                             studentAttendance?.status === 'nieobecny' ? 'text-red-600' :
                             studentAttendance?.status === 'wypisani' ? 'text-gray-600' :
                             'text-red-600'
                           }`}
                           data-testid={`status-text-${student.id}`}
                         >
-                          {studentAttendance?.status === 'obecny' ? 'Obecny/a' : 
-                           studentAttendance?.status === 'nieobecny' ? 'Nieobecny/a' : 
+                          {studentAttendance?.status === 'obecny' ? 'Obecny/a' :
+                           studentAttendance?.status === 'nieobecny' ? 'Nieobecny/a' :
                            studentAttendance?.status === 'wypisani' ? 'Wypisani' :
                            'Nieobecny/a'}
                         </span>
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-center w-12 md:w-16">
                     <Button
                       variant="ghost"
                       size="sm"
-                      className={`${isInactive ? 'text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                      className={`p-1 md:p-2 ${isInactive ? 'text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
                       onClick={() => handleStudentClick(student)}
                       aria-label={`Więcej opcji dla ${student.first_name} ${student.last_name}`}
                       data-testid={`button-options-${student.id}`}

@@ -251,33 +251,41 @@ export function ReportsPage() {
           )}
 
           {reportData && report.items.length > 0 && (
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Grupa</TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Notatki</TableHead>
+                    <TableHead className="w-auto">Student</TableHead>
+                    <TableHead className="hidden md:table-cell w-32">Grupa</TableHead>
+                    <TableHead className="w-24 md:w-32">Data</TableHead>
+                    <TableHead className="w-24 md:w-32">Status</TableHead>
+                    <TableHead className="hidden lg:table-cell">Notatki</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {report.items.map((item, index) => (
                     <TableRow key={`${item.student_id}-${item.date}`} data-testid={`row-report-${index}`}>
-                      <TableCell className="font-medium">{item.student_name}</TableCell>
-                      <TableCell>{item.group_name}</TableCell>
-                      <TableCell>{new Date(item.date).toLocaleDateString('pl-PL')}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col">
+                          <span>{item.student_name}</span>
+                          <span className="md:hidden text-xs text-muted-foreground">{item.group_name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">{item.group_name}</TableCell>
+                      <TableCell className="text-xs md:text-sm">{new Date(item.date).toLocaleDateString('pl-PL')}</TableCell>
                       <TableCell>
-                        <Badge variant={
-                          item.status === 'obecny' ? 'default' : 
-                          item.status === 'nieobecny' ? 'destructive' : 
-                          'secondary'
-                        }>
+                        <Badge
+                          variant={
+                            item.status === 'obecny' ? 'default' :
+                            item.status === 'nieobecny' ? 'destructive' :
+                            'secondary'
+                          }
+                          className="text-xs md:text-sm"
+                        >
                           {item.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
                         {item.notes || '-'}
                       </TableCell>
                     </TableRow>
