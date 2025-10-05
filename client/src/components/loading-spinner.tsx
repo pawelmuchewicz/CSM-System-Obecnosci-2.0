@@ -42,7 +42,7 @@ export function LoadingSpinner({
     >
       <div className="text-center">
         <img
-          src="https://roztanczonarumia.pl/wp-content/uploads/2025/10/ptaszek.png"
+          src="/logo.png"
           alt="Ładowanie…"
           width={imgSize}
           height={imgSize}
