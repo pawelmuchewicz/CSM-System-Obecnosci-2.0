@@ -70,8 +70,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Set session
       (req.session as any).userId = user.id;
 
-      // Get user's groups from the groupIds column
-      const groupIds = user.groupIds || [];
+      // Get user's groups from the groupIds column - ensure it's always an array
+      let groupIds: string[] = [];
+      try {
+        if (user.groupIds) {
+          // If it's already an array, use it
+          if (Array.isArray(user.groupIds)) {
+            groupIds = user.groupIds.filter((id): id is string => typeof id === 'string');
+          }
+          // If it's a string (JSON), parse it
+          else if (typeof user.groupIds === 'string') {
+            const parsed = JSON.parse(user.groupIds);
+            groupIds = Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to parse groupIds for user ${user.username}:`, error);
+        groupIds = [];
+      }
+      console.log(`User ${user.username} groupIds:`, groupIds);
 
       // Get user's permissions and role info
       const userRole = (user.role || 'instructor') as 'owner' | 'reception' | 'instructor';
@@ -130,9 +147,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Login error:", error);
-      res.status(400).json({ 
-        message: "Błąd podczas logowania",
-        code: "LOGIN_ERROR" 
+      console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+      console.error("Error details:", {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error)
+      });
+      res.status(500).json({
+        message: "Błąd podczas logowania. Spróbuj ponownie lub skontaktuj się z administratorem.",
+        code: "LOGIN_ERROR",
+        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined
       });
     }
   });
