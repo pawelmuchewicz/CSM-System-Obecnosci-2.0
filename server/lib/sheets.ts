@@ -529,8 +529,10 @@ export async function addStudent(studentData: {
       }
     });
 
-    // Clear cache for this group
-    clearCache(`students:${studentData.groupId}`);
+    // Clear cache for this group (both with and without inactive)
+    clearCache(getCacheKey('students', studentData.groupId, 'true'));
+    clearCache(getCacheKey('students', studentData.groupId, 'false'));
+    console.log(`✅ Cleared cache for group ${studentData.groupId}`);
 
     return studentId;
   } catch (error) {
@@ -588,8 +590,10 @@ export async function approveStudent(studentId: string, groupId: string, endDate
       }
     });
 
-    // Clear cache
-    clearCache(`students:${groupId}`);
+    // Clear cache for this group (both with and without inactive)
+    clearCache(getCacheKey('students', groupId, 'true'));
+    clearCache(getCacheKey('students', groupId, 'false'));
+    console.log(`✅ Cleared cache for group ${groupId} after approval`);
   } catch (error) {
     console.error('Failed to approve student:', error);
     throw new Error('Failed to approve student');
@@ -644,8 +648,10 @@ export async function expelStudent(studentId: string, groupId: string, endDate: 
       }
     });
 
-    // Clear cache
-    clearCache(`students:${groupId}`);
+    // Clear cache for this group (both with and without inactive)
+    clearCache(getCacheKey('students', groupId, 'true'));
+    clearCache(getCacheKey('students', groupId, 'false'));
+    console.log(`✅ Cleared cache for group ${groupId} after expelling student`);
   } catch (error) {
     console.error('Failed to expel student:', error);
     throw new Error('Failed to expel student');
