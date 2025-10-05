@@ -475,16 +475,16 @@ export async function addStudent(studentData: {
     const config = GROUPS_CONFIG[studentData.groupId];
     const sheetGroupId = config?.sheetGroupId || studentData.groupId;
 
-    // Prepare row data (columns A-M)
+    // Prepare row data (columns A-M) - FIXED to match actual sheet structure
     const rowData = [
       studentId,                          // A: id
       studentData.firstName,              // B: first_name
       studentData.lastName,               // C: last_name
-      sheetGroupId,                       // D: group_id
-      'TRUE',                             // E: active (new students are active by default)
-      studentData.class || '',            // F: class
-      studentData.phone || '',            // G: phone
-      studentData.mail || '',             // H: mail
+      studentData.class || '',            // D: class (NOT group_id!)
+      studentData.phone || '',            // E: phone (NOT active!)
+      studentData.mail || '',             // F: mail (NOT class!)
+      sheetGroupId,                       // G: group_id (NOT phone!)
+      'TRUE',                             // H: active (NOT mail!)
       'pending',                          // I: status (pending approval)
       studentData.startDate,              // J: start_date
       '',                                 // K: end_date (empty initially)
@@ -496,15 +496,15 @@ export async function addStudent(studentData: {
     console.log('Student data received:', studentData);
     console.log('Sheet Group ID:', sheetGroupId);
     console.log('Row data to write:', rowData);
-    console.log('Row data mapping:');
+    console.log('Row data mapping (FIXED ORDER):');
     console.log(`  A (id): ${rowData[0]}`);
     console.log(`  B (first_name): ${rowData[1]}`);
     console.log(`  C (last_name): ${rowData[2]}`);
-    console.log(`  D (group_id): ${rowData[3]}`);
-    console.log(`  E (active): ${rowData[4]}`);
-    console.log(`  F (class): ${rowData[5]}`);
-    console.log(`  G (phone): ${rowData[6]}`);
-    console.log(`  H (mail): ${rowData[7]}`);
+    console.log(`  D (class): ${rowData[3]}`);
+    console.log(`  E (phone): ${rowData[4]}`);
+    console.log(`  F (mail): ${rowData[5]}`);
+    console.log(`  G (group_id): ${rowData[6]}`);
+    console.log(`  H (active): ${rowData[7]}`);
     console.log(`  I (status): ${rowData[8]}`);
     console.log(`  J (start_date): ${rowData[9]}`);
     console.log(`  K (end_date): ${rowData[10]}`);
@@ -622,14 +622,14 @@ export async function expelStudent(studentId: string, groupId: string, endDate: 
       throw new Error('Student not found');
     }
 
-    // Update active to FALSE (column E), status to 'inactive' (column I), and end_date (column K)
+    // Update active to FALSE (column H - FIXED!), status to 'inactive' (column I), and end_date (column K)
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId,
       requestBody: {
         valueInputOption: 'RAW',
         data: [
           {
-            range: `Students!E${rowIndex}`,
+            range: `Students!H${rowIndex}`,  // FIXED: H not E (active is column H in actual sheet)
             values: [['FALSE']]
           },
           {

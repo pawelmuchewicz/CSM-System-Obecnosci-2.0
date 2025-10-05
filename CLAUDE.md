@@ -43,7 +43,7 @@ npm run db:push
 ### Data Flow
 
 **Primary Storage**: Google Sheets with three worksheets per group:
-- `Students` (id, first_name, last_name, group_id, active, class, phone, mail)
+- `Students` (id, first_name, last_name, class, phone, mail, group_id, active, status, start_date, end_date, added_by, created_at)
 - `Sessions` (session_id, group_id, date)
 - `Attendance` (session_id, student_id, status, notes, updated_at, student_name, class, phone, group_name)
 
