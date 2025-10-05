@@ -292,7 +292,7 @@ export async function getStudents(groupId?: string, showInactive: boolean = fals
     
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Students!A1:N2000' // Changed from M to N - includes empty column G
+      range: 'Students!A1:M2000' // Columns A-M (13 columns)
     });
 
     const rows = response.data.values || [];
@@ -475,7 +475,7 @@ export async function addStudent(studentData: {
     const config = GROUPS_CONFIG[studentData.groupId];
     const sheetGroupId = config?.sheetGroupId || studentData.groupId;
 
-    // Prepare row data (columns A-N) - FIXED to match actual sheet structure with empty column G
+    // Prepare row data (columns A-M) - CORRECT ORDER from screenshot
     const rowData = [
       studentId,                          // A: id
       studentData.firstName,              // B: first_name
@@ -483,35 +483,33 @@ export async function addStudent(studentData: {
       studentData.class || '',            // D: class
       studentData.phone || '',            // E: phone
       studentData.mail || '',             // F: mail
-      '',                                 // G: EMPTY COLUMN (no header in sheet)
-      sheetGroupId,                       // H: group_id
-      'TRUE',                             // I: active
-      'pending',                          // J: status (pending approval)
-      studentData.startDate,              // K: start_date
-      '',                                 // L: end_date (empty initially)
-      studentData.addedBy,                // M: added_by
-      new Date().toISOString(),           // N: created_at
+      sheetGroupId,                       // G: group_id
+      'TRUE',                             // H: active
+      'pending',                          // I: status (pending approval)
+      studentData.startDate,              // J: start_date
+      '',                                 // K: end_date (empty initially)
+      studentData.addedBy,                // L: added_by
+      new Date().toISOString(),           // M: created_at
     ];
 
     console.log('=== ADD STUDENT DEBUG ===');
     console.log('Student data received:', studentData);
     console.log('Sheet Group ID:', sheetGroupId);
     console.log('Row data to write:', rowData);
-    console.log('Row data mapping (FINAL - with empty column G):');
+    console.log('Row data mapping (CORRECT from screenshot):');
     console.log(`  A (id): ${rowData[0]}`);
     console.log(`  B (first_name): ${rowData[1]}`);
     console.log(`  C (last_name): ${rowData[2]}`);
     console.log(`  D (class): ${rowData[3]}`);
     console.log(`  E (phone): ${rowData[4]}`);
     console.log(`  F (mail): ${rowData[5]}`);
-    console.log(`  G (EMPTY): ${rowData[6]}`);
-    console.log(`  H (group_id): ${rowData[7]}`);
-    console.log(`  I (active): ${rowData[8]}`);
-    console.log(`  J (status): ${rowData[9]}`);
-    console.log(`  K (start_date): ${rowData[10]}`);
-    console.log(`  L (end_date): ${rowData[11]}`);
-    console.log(`  M (added_by): ${rowData[12]}`);
-    console.log(`  N (created_at): ${rowData[13]}`);
+    console.log(`  G (group_id): ${rowData[6]}`);
+    console.log(`  H (active): ${rowData[7]}`);
+    console.log(`  I (status): ${rowData[8]}`);
+    console.log(`  J (start_date): ${rowData[9]}`);
+    console.log(`  K (end_date): ${rowData[10]}`);
+    console.log(`  L (added_by): ${rowData[11]}`);
+    console.log(`  M (created_at): ${rowData[12]}`);
     console.log('========================');
 
     // Find next empty row
@@ -524,7 +522,7 @@ export async function addStudent(studentData: {
     // Append to Students sheet using UPDATE to specific row (ensures column alignment)
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `Students!A${nextRow}:N${nextRow}`,  // Changed from M to N (14 columns)
+      range: `Students!A${nextRow}:M${nextRow}`,  // 13 columns (A-M)
       valueInputOption: 'RAW',
       requestBody: {
         values: [rowData]
@@ -549,7 +547,7 @@ export async function approveStudent(studentId: string, groupId: string, endDate
     // Get all students to find the row
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Students!A:N'  // Changed from A:M to A:N
+      range: 'Students!A:M'  // Columns A-M
     });
 
     const rows = response.data.values || [];
@@ -567,17 +565,17 @@ export async function approveStudent(studentId: string, groupId: string, endDate
       throw new Error('Student not found');
     }
 
-    // Update status to 'active' (column J - FIXED!) and optionally end_date (column L - FIXED!)
+    // Update status to 'active' (column I) and optionally end_date (column K)
     const updates = [
       {
-        range: `Students!J${rowIndex}`,  // Changed from I to J (status is column J)
+        range: `Students!I${rowIndex}`,  // Column I = status
         values: [['active']]
       }
     ];
 
     if (endDate) {
       updates.push({
-        range: `Students!L${rowIndex}`,  // Changed from K to L (end_date is column L)
+        range: `Students!K${rowIndex}`,  // Column K = end_date
         values: [[endDate]]
       });
     }
@@ -606,7 +604,7 @@ export async function expelStudent(studentId: string, groupId: string, endDate: 
     // Get all students to find the row
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Students!A:N'  // Changed from A:M to A:N
+      range: 'Students!A:M'  // Columns A-M
     });
 
     const rows = response.data.values || [];
@@ -624,22 +622,22 @@ export async function expelStudent(studentId: string, groupId: string, endDate: 
       throw new Error('Student not found');
     }
 
-    // Update active to FALSE (column I - FIXED!), status to 'inactive' (column J - FIXED!), and end_date (column L - FIXED!)
+    // Update active to FALSE (column H), status to 'inactive' (column I), and end_date (column K)
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId,
       requestBody: {
         valueInputOption: 'RAW',
         data: [
           {
-            range: `Students!I${rowIndex}`,  // Column I = active
+            range: `Students!H${rowIndex}`,  // Column H = active
             values: [['FALSE']]
           },
           {
-            range: `Students!J${rowIndex}`,  // Column J = status (changed from I)
+            range: `Students!I${rowIndex}`,  // Column I = status
             values: [['inactive']]
           },
           {
-            range: `Students!L${rowIndex}`,  // Column L = end_date (changed from K)
+            range: `Students!K${rowIndex}`,  // Column K = end_date
             values: [[endDate]]
           }
         ]

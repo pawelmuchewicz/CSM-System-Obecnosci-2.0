@@ -43,10 +43,9 @@ npm run db:push
 ### Data Flow
 
 **Primary Storage**: Google Sheets with three worksheets per group:
-- `Students` - Columns A-N (NOTE: Column G is EMPTY - no header):
-  - A: id, B: first_name, C: last_name, D: class, E: phone, F: mail
-  - G: (EMPTY COLUMN - historical artifact)
-  - H: group_id, I: active, J: status, K: start_date, L: end_date, M: added_by, N: created_at
+- `Students` - Columns A-M (13 columns):
+  - A: id, B: first_name, C: last_name, D: class, E: phone, F: mail, G: group_id
+  - H: active, I: status, J: start_date, K: end_date, L: added_by, M: created_at
 - `Sessions` (session_id, group_id, date)
 - `Attendance` (session_id, student_id, status, notes, updated_at, student_name, class, phone, group_name)
 
