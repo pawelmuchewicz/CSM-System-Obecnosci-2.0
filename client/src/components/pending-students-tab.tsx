@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { LoadingSpinner } from "@/components/loading-spinner";
 import { UserCheck, Calendar, Clock } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -70,9 +71,7 @@ export function PendingStudentsTab() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
+          <LoadingSpinner size="sm" text="Ładowanie uczniów..." />
         ) : !pendingData?.students || pendingData.students.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <UserCheck className="mx-auto w-12 h-12 mb-4" />

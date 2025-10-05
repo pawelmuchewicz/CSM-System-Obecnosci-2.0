@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { LoadingSpinner } from "@/components/loading-spinner";
 import { Users, UserCheck, UserX, Settings, Plus, RefreshCw, AlertCircle, Edit2 as Edit, Trash2, Sheet, ExternalLink, GraduationCap } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -178,9 +179,7 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
+                <LoadingSpinner size="sm" text="Ładowanie kont..." />
               ) : pendingUsers?.users?.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <UserCheck className="mx-auto w-12 h-12 mb-4" />
@@ -650,9 +649,7 @@ function AllUsersTab() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
+            <LoadingSpinner size="sm" text="Ładowanie użytkowników..." />
           ) : allUsers?.users?.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Users className="mx-auto w-12 h-12 mb-4" />
@@ -1269,9 +1266,7 @@ function SheetsConfigTab() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
+          <LoadingSpinner size="sm" text="Ładowanie arkuszy..." />
         ) : configs?.configs?.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Sheet className="mx-auto w-12 h-12 mb-4" />

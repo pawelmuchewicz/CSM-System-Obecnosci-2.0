@@ -5,6 +5,7 @@ import { AlertTriangle, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Toolbar } from "@/components/toolbar";
 import { AttendanceTable } from "@/components/attendance-table";
+import { LoadingSpinner } from "@/components/loading-spinner";
 import { fetchGroups, fetchStudents, fetchAttendance, saveAttendance, invalidateAttendanceQueries } from "@/lib/api";
 import type { AttendanceItem } from "@shared/schema";
 import { ConfirmationModal } from "@/components/confirmation-modal";
@@ -288,9 +289,8 @@ export default function AttendancePage() {
 
         {/* Loading State */}
         {isLoading && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-sm text-gray-500">Ładowanie...</p>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <LoadingSpinner size="md" text="Ładowanie uczniów..." />
           </div>
         )}
 
