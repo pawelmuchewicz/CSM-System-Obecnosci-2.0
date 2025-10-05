@@ -492,10 +492,37 @@ export async function addStudent(studentData: {
       new Date().toISOString(),           // M: created_at
     ];
 
-    // Append to Students sheet
-    await sheets.spreadsheets.values.append({
+    console.log('=== ADD STUDENT DEBUG ===');
+    console.log('Student data received:', studentData);
+    console.log('Sheet Group ID:', sheetGroupId);
+    console.log('Row data to write:', rowData);
+    console.log('Row data mapping:');
+    console.log(`  A (id): ${rowData[0]}`);
+    console.log(`  B (first_name): ${rowData[1]}`);
+    console.log(`  C (last_name): ${rowData[2]}`);
+    console.log(`  D (group_id): ${rowData[3]}`);
+    console.log(`  E (active): ${rowData[4]}`);
+    console.log(`  F (class): ${rowData[5]}`);
+    console.log(`  G (phone): ${rowData[6]}`);
+    console.log(`  H (mail): ${rowData[7]}`);
+    console.log(`  I (status): ${rowData[8]}`);
+    console.log(`  J (start_date): ${rowData[9]}`);
+    console.log(`  K (end_date): ${rowData[10]}`);
+    console.log(`  L (added_by): ${rowData[11]}`);
+    console.log(`  M (created_at): ${rowData[12]}`);
+    console.log('========================');
+
+    // Find next empty row
+    const existingResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Students!A:M',
+      range: 'Students!A:A'
+    });
+    const nextRow = (existingResponse.data.values?.length || 1) + 1;
+
+    // Append to Students sheet using UPDATE to specific row (ensures column alignment)
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `Students!A${nextRow}:M${nextRow}`,
       valueInputOption: 'RAW',
       requestBody: {
         values: [rowData]
