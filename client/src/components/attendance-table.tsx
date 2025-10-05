@@ -122,6 +122,11 @@ export function AttendanceTable({
               const isInactive = !student.active;
               const isPending = student.status === 'pending';
 
+              // Debug logging for pending detection
+              if (student.status) {
+                console.log(`Student ${student.first_name} ${student.last_name}: status="${student.status}", isPending=${isPending}, active=${student.active}`);
+              }
+
               // Date filtering logic
               const selectedDateObj = new Date(selectedDate);
               const isBeforeStartDate = student.start_date && new Date(student.start_date) > selectedDateObj;

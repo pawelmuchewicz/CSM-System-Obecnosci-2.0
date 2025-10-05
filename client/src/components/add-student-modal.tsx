@@ -35,7 +35,9 @@ export function AddStudentModal({ isOpen, onClose, groupId, groupName }: AddStud
         title: "Sukces!",
         description: "Uczeń został dodany i oczekuje na zatwierdzenie przez administratora",
       });
+      // Invalidate all student queries to show new pending student immediately
       queryClient.invalidateQueries({ queryKey: ['/api/students'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/pending-students'] });
       onClose();
       setFormData({
         firstName: '',
