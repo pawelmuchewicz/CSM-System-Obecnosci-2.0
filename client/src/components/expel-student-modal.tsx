@@ -20,8 +20,8 @@ export function ExpelStudentModal({ isOpen, onClose, student }: ExpelStudentModa
   const [endDate, setEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   const expelStudentMutation = useMutation({
-    mutationFn: async ({ studentId, endDate }: { studentId: string; endDate: string }) => {
-      await apiRequest('PATCH', '/api/admin/expel-student', { studentId, endDate });
+    mutationFn: async ({ studentId, groupId, endDate }: { studentId: string; groupId: string; endDate: string }) => {
+      await apiRequest('PATCH', '/api/admin/expel-student', { studentId, groupId, endDate });
     },
     onSuccess: () => {
       toast({
@@ -45,7 +45,7 @@ export function ExpelStudentModal({ isOpen, onClose, student }: ExpelStudentModa
     e.preventDefault();
     if (!student || !endDate) return;
 
-    expelStudentMutation.mutate({ studentId: student.id, endDate });
+    expelStudentMutation.mutate({ studentId: student.id, groupId: student.group_id, endDate });
   };
 
   if (!student) return null;

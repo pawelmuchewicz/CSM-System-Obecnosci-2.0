@@ -333,6 +333,7 @@ export default function AttendancePage() {
         isOpen={isAddStudentModalOpen}
         onClose={() => setIsAddStudentModalOpen(false)}
         groupId={selectedGroup}
+        groupName={groupsData?.groups.find(g => g.id === selectedGroup)?.name || ''}
       />
     </div>
   );

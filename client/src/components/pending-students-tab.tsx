@@ -35,8 +35,8 @@ export function PendingStudentsTab() {
   });
 
   const approveStudentMutation = useMutation({
-    mutationFn: async ({ studentId, endDate }: { studentId: string; endDate?: string }) => {
-      await apiRequest('POST', '/api/admin/approve-student', { studentId, endDate });
+    mutationFn: async ({ studentId, groupId, endDate }: { studentId: string; groupId: string; endDate?: string }) => {
+      await apiRequest('POST', '/api/admin/approve-student', { studentId, groupId, endDate });
     },
     onSuccess: () => {
       toast({
@@ -55,9 +55,9 @@ export function PendingStudentsTab() {
     },
   });
 
-  const handleApprove = (studentId: string) => {
+  const handleApprove = (studentId: string, groupId: string) => {
     const endDate = endDates[studentId] || '';
-    approveStudentMutation.mutate({ studentId, endDate });
+    approveStudentMutation.mutate({ studentId, groupId, endDate });
   };
 
   return (
@@ -155,7 +155,7 @@ export function PendingStudentsTab() {
 
                     <Button
                       size="sm"
-                      onClick={() => handleApprove(student.id)}
+                      onClick={() => handleApprove(student.id, student.group_id)}
                       disabled={approveStudentMutation.isPending}
                       className="py-2 px-4 font-medium whitespace-nowrap"
                     >

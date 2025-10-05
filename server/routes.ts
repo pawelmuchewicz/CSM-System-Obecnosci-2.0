@@ -303,12 +303,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const data = approveStudentSchema.parse(req.body);
 
-      // Extract groupId from studentId (format: groupId-timestamp)
-      const groupId = data.studentId.split('-')[0];
-
       await approveStudent(
         data.studentId,
-        groupId,
+        data.groupId,
         data.endDate && data.endDate.trim() !== '' ? data.endDate : undefined
       );
 
@@ -337,10 +334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const data = expelStudentSchema.parse(req.body);
 
-      // Extract groupId from studentId
-      const groupId = data.studentId.split('-')[0];
-
-      await expelStudent(data.studentId, groupId, data.endDate);
+      await expelStudent(data.studentId, data.groupId, data.endDate);
 
       res.json({
         message: "Uczeń został wypisany",

@@ -289,11 +289,13 @@ export const addStudentSchema = z.object({
 
 export const approveStudentSchema = z.object({
   studentId: z.string().min(1),
+  groupId: z.string().min(1),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')),
 });
 
 export const expelStudentSchema = z.object({
   studentId: z.string().min(1),
+  groupId: z.string().min(1),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Nieprawidłowy format daty (YYYY-MM-DD)"),
 });
 

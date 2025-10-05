@@ -448,9 +448,28 @@ export async function addStudent(studentData: {
     const sheets = await getSheets();
     const spreadsheetId = await getSpreadsheetId(studentData.groupId);
 
-    // Generate unique ID for student
-    const timestamp = Date.now();
-    const studentId = `${studentData.groupId}-${timestamp}`;
+    // Get all existing students to find highest ID number
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'Students!A:A'
+    });
+
+    const rows = response.data.values || [];
+    let maxId = 0;
+
+    // Find highest numeric ID (format: S1, S2, S3, etc.)
+    for (let i = 1; i < rows.length; i++) {
+      const id = String(rows[i][0] || '').trim();
+      if (id.startsWith('S')) {
+        const num = parseInt(id.substring(1));
+        if (!isNaN(num) && num > maxId) {
+          maxId = num;
+        }
+      }
+    }
+
+    // Generate next sequential ID
+    const studentId = `S${maxId + 1}`;
 
     // Get group's sheetGroupId for consistency
     const config = GROUPS_CONFIG[studentData.groupId];

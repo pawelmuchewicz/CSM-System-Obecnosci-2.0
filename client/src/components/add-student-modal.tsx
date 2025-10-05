@@ -11,9 +11,10 @@ interface AddStudentModalProps {
   isOpen: boolean;
   onClose: () => void;
   groupId: string;
+  groupName: string;
 }
 
-export function AddStudentModal({ isOpen, onClose, groupId }: AddStudentModalProps) {
+export function AddStudentModal({ isOpen, onClose, groupId, groupName }: AddStudentModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
@@ -61,9 +62,9 @@ export function AddStudentModal({ isOpen, onClose, groupId }: AddStudentModalPro
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Dodaj ucznia</DialogTitle>
+          <DialogTitle>Dodaj ucznia do grupy: {groupName}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -100,11 +101,13 @@ export function AddStudentModal({ isOpen, onClose, groupId }: AddStudentModalPro
           </div>
 
           <div>
-            <Label htmlFor="class">Klasa</Label>
+            <Label htmlFor="class">Klasa *</Label>
             <Input
               id="class"
               value={formData.class}
               onChange={(e) => setFormData(prev => ({ ...prev, class: e.target.value }))}
+              required
+              placeholder="np. 1A, 2B, 3C"
             />
           </div>
 
