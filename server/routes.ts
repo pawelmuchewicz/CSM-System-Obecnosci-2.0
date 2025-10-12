@@ -6,6 +6,7 @@ import { attendanceRequestSchema, loginSchema, instructorsAuth, instructorGroupA
 import { setupSession, requireAuth, optionalAuth, requireGroupAccess, hashPassword, verifyPassword, type AuthenticatedRequest } from "./auth";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
+import { parseGroupIds } from "./utils/parseGroupIds";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session middleware
@@ -71,23 +72,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       (req.session as any).userId = user.id;
 
       // Get user's groups from the groupIds column - ensure it's always an array
-      let groupIds: string[] = [];
-      try {
-        if (user.groupIds) {
-          // If it's already an array, use it
-          if (Array.isArray(user.groupIds)) {
-            groupIds = user.groupIds.filter((id): id is string => typeof id === 'string');
-          }
-          // If it's a string (JSON), parse it
-          else if (typeof user.groupIds === 'string') {
-            const parsed = JSON.parse(user.groupIds);
-            groupIds = Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
-          }
-        }
-      } catch (error) {
-        console.error(`Failed to parse groupIds for user ${user.username}:`, error);
-        groupIds = [];
-      }
+      const groupIds = parseGroupIds(user.groupIds);
       console.log(`User ${user.username} groupIds:`, groupIds);
 
       // Get user's permissions and role info

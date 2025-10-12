@@ -6,7 +6,14 @@ import { db } from './db';
 import { instructorsAuth, instructorGroupAssignments, type UserPermissions, type UserRole } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 
-// Session configuration
+/**
+ * Configure express-session with PostgreSQL store
+ *
+ * Sets up session middleware with persistent PostgreSQL storage.
+ * Sessions expire after 7 days of inactivity.
+ *
+ * @param app - Express application instance
+ */
 export function setupSession(app: Express) {
   const pgStore = connectPg(session);
   
@@ -30,12 +37,24 @@ export function setupSession(app: Express) {
   }));
 }
 
-// Password hashing utilities
+/**
+ * Hash a plaintext password using bcrypt
+ *
+ * @param password - Plaintext password to hash
+ * @returns Hashed password string (bcrypt format)
+ */
 export async function hashPassword(password: string): Promise<string> {
   const saltRounds = 10;
   return bcrypt.hash(password, saltRounds);
 }
 
+/**
+ * Verify a plaintext password against a bcrypt hash
+ *
+ * @param password - Plaintext password to verify
+ * @param hashedPassword - Bcrypt hash to compare against
+ * @returns True if password matches, false otherwise
+ */
 export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
   return bcrypt.compare(password, hashedPassword);
 }
@@ -56,7 +75,17 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-// Helper function to get user permissions based on role
+/**
+ * Get user permissions based on their role
+ *
+ * Maps user roles to their corresponding permission sets:
+ * - owner: Full access to all features
+ * - reception: Full access except some admin functions
+ * - instructor: Limited access (only attendance and profile)
+ *
+ * @param role - User role ('owner' | 'reception' | 'instructor')
+ * @returns UserPermissions object with boolean flags for each permission
+ */
 function getUserPermissions(role: UserRole): UserPermissions {
   switch (role) {
     case 'owner':
@@ -93,6 +122,17 @@ function getUserPermissions(role: UserRole): UserPermissions {
   }
 }
 
+/**
+ * Authentication middleware - requires valid session
+ *
+ * Validates user session and loads user data from database.
+ * Attaches user object to req.user for downstream handlers.
+ * Returns 401 if not authenticated or user not found.
+ *
+ * @param req - Express request object (AuthenticatedRequest)
+ * @param res - Express response object
+ * @param next - Express next function
+ */
 export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   if (!req.session?.userId) {
     return res.status(401).json({ 
@@ -173,6 +213,17 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
 }
 
 // Optional auth middleware (adds user to request if logged in, but doesn't require it)
+/**
+ * Optional authentication middleware
+ *
+ * Similar to requireAuth but doesn't fail if user is not authenticated.
+ * Loads user data if session exists, otherwise continues without user.
+ * Useful for endpoints that work for both authenticated and anonymous users.
+ *
+ * @param req - Express request object (AuthenticatedRequest)
+ * @param res - Express response object
+ * @param next - Express next function
+ */
 export async function optionalAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   if (req.session?.userId) {
     try {
@@ -188,6 +239,18 @@ export async function optionalAuth(req: AuthenticatedRequest, res: Response, nex
 }
 
 // Group access middleware
+/**
+ * Authorization middleware - requires group access
+ *
+ * Validates that authenticated user has access to the requested group.
+ * Must be used after requireAuth middleware.
+ * Checks groupId from req.params or req.body against user's groupIds.
+ * Owner and reception roles have access to all groups.
+ *
+ * @param req - Express request object (AuthenticatedRequest with user)
+ * @param res - Express response object
+ * @param next - Express next function
+ */
 export function requireGroupAccess(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const groupId = req.params.groupId || req.query.groupId as string;
   

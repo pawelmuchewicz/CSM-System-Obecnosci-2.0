@@ -29,10 +29,22 @@ const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
 const STUDENTS_CACHE_DURATION = 15 * 60 * 1000; // 15 minutes for students
 const ATTENDANCE_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for attendance
 
+/**
+ * Generate a consistent cache key from operation name and parameters
+ * @param operation - The operation name (e.g., 'students', 'attendance')
+ * @param params - Variable parameters to include in the key
+ * @returns Cache key string in format "operation:param1:param2:..."
+ */
 function getCacheKey(operation: string, ...params: any[]): string {
   return `${operation}:${params.join(':')}`;
 }
 
+/**
+ * Retrieve data from cache if still valid (within maxAge)
+ * @param key - Cache key to lookup
+ * @param maxAge - Maximum age in milliseconds (default: CACHE_DURATION)
+ * @returns Cached data if valid, null otherwise
+ */
 function getFromCache<T>(key: string, maxAge: number = CACHE_DURATION): T | null {
   const item = cache.get(key);
   if (item && (Date.now() - item.timestamp) < maxAge) {
@@ -43,11 +55,25 @@ function getFromCache<T>(key: string, maxAge: number = CACHE_DURATION): T | null
   return null;
 }
 
+/**
+ * Store data in cache with current timestamp
+ * @param key - Cache key to store under
+ * @param data - Data to cache
+ */
 function setCache<T>(key: string, data: T): void {
   cache.set(key, { data, timestamp: Date.now() });
   console.log(`Cache SET for ${key}`);
 }
 
+/**
+ * Clear cache entries matching a pattern or clear all cache
+ * @param pattern - Optional pattern to match cache keys (clears all if not provided)
+ * @example
+ * ```ts
+ * clearCache('students:group123') // Clears all student cache for group123
+ * clearCache() // Clears entire cache
+ * ```
+ */
 export function clearCache(pattern?: string): void {
   if (pattern) {
     const keys = Array.from(cache.keys());
@@ -162,7 +188,15 @@ async function getSpreadsheetId(groupId: string): Promise<string> {
   }
 }
 
-// Helper function to get authenticated sheets client
+/**
+ * Get authenticated Google Sheets API client
+ *
+ * Creates and returns an authenticated sheets client using service account credentials.
+ * Handles private key formatting for various environments (development, production, Coolify).
+ *
+ * @returns Authenticated Google Sheets API client
+ * @throws Error if credentials are missing or invalid
+ */
 export async function getSheets() {
   try {
     const serviceEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -227,6 +261,16 @@ function normalizeAttendanceStatus(s: any): 'obecny' | 'nieobecny' | 'wypisani' 
   return presentValues.includes(str) ? 'obecny' : 'nieobecny';
 }
 
+/**
+ * Fetch all dance groups from database or fallback to hardcoded config
+ *
+ * Retrieves group configurations with their Google Sheets spreadsheet IDs.
+ * First attempts to load from database (groupsConfig table), then falls back
+ * to GROUPS_CONFIG constant if database is empty.
+ *
+ * @returns Array of Group objects with id, name, and spreadsheetId
+ * @throws Error if unable to fetch groups or all groups fail validation
+ */
 export async function getGroups(): Promise<Group[]> {
   const cacheKey = getCacheKey('groups');
   const cached = getFromCache<Group[]>(cacheKey, CACHE_DURATION);
@@ -276,6 +320,18 @@ export async function getGroups(): Promise<Group[]> {
   }
 }
 
+/**
+ * Fetch students from Google Sheets for specified group(s)
+ *
+ * Retrieves student data from the 'Students' worksheet. Results are cached
+ * for 15 minutes. Supports filtering by group and active status.
+ * School groups (Sp*) are sorted by class using Polish locale.
+ *
+ * @param groupId - Optional group ID to filter by. If not provided, returns all students.
+ * @param showInactive - Whether to include inactive students (default: false)
+ * @returns Array of Student objects
+ * @throws Error if unable to fetch student data from sheets
+ */
 export async function getStudents(groupId?: string, showInactive: boolean = false): Promise<Student[]> {
   if (!groupId) {
     return [];
@@ -759,6 +815,21 @@ export async function getAttendance(groupId: string, dateISO: string): Promise<{
   }
 }
 
+/**
+ * Update attendance record for a student in a session
+ *
+ * Implements optimistic locking with last-write-wins conflict detection.
+ * Updates the 'Attendance' worksheet and clears relevant caches.
+ *
+ * @param groupId - Group identifier
+ * @param sessionId - Session identifier
+ * @param studentId - Student identifier
+ * @param status - Attendance status ('obecny' | 'nieobecny' | 'wypisani')
+ * @param notes - Optional notes about the attendance
+ * @param frontendTimestamp - Timestamp from frontend for conflict detection
+ * @returns Object with success flag and optional conflict data
+ * @throws Error if unable to update attendance
+ */
 export async function setAttendance(
   groupId: string, 
   dateISO: string, 
