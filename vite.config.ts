@@ -37,10 +37,4 @@ export default defineConfig({
       deny: ["**/.*"],
     },
   },
-  // 👇 DODAJ TEN FRAGMENT
-  preview: {
-    host: true, // Pozwala na dostęp z zewnątrz kontenera
-    port: 3000, // Port zgodny z ustawieniami w Coolify (Port Exposes: 3000)
-  },
-  // 👆 KONIEC NOWEGO FRAGMENTU
 });

@@ -138,7 +138,7 @@ The application is deployed on Coolify with the following setup:
 - Build Pack: Nixpacks (auto-detected)
 - Install Command: `npm install`
 - Build Command: `npm run build`
-- Start Command: `npm run dev`
+- Start Command: `npm run start`
 - Port: `5000`
 
 **Environment Variables (Production):**
