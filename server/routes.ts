@@ -7,6 +7,7 @@ import { setupSession, requireAuth, optionalAuth, requireGroupAccess, hashPasswo
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
 import { parseGroupIds } from "./utils/parseGroupIds";
+import { logger } from "./lib/logger";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session middleware
@@ -73,7 +74,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get user's groups from the groupIds column - ensure it's always an array
       const groupIds = parseGroupIds(user.groupIds);
-      console.log(`User ${user.username} groupIds:`, groupIds);
+      logger.info(`User ${user.username} groupIds:`, groupIds);
 
       // Get user's permissions and role info
       const userRole = (user.role || 'instructor') as 'owner' | 'reception' | 'instructor';
@@ -131,9 +132,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error) {
-      console.error("Login error:", error);
-      console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
-      console.error("Error details:", {
+      logger.error("Login error:", error);
+      logger.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+      logger.error("Error details:", {
         name: error instanceof Error ? error.name : 'Unknown',
         message: error instanceof Error ? error.message : String(error)
       });
@@ -149,7 +150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/logout", (req, res) => {
     req.session?.destroy((err) => {
       if (err) {
-        console.error("Logout error:", err);
+        logger.error("Logout error:", err);
         return res.status(500).json({ 
           message: "Błąd podczas wylogowywania",
           code: "LOGOUT_ERROR" 
@@ -182,7 +183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({ groups: filteredGroups });
     } catch (error) {
-      console.error("Error fetching groups:", error);
+      logger.error("Error fetching groups:", error);
       res.status(502).json({ 
         message: "Failed to fetch groups from Google Sheets",
         hint: "Ensure the sheet is shared with the service account as Editor"
@@ -199,7 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const students = await getStudents(groupId, showInactive);
       res.json({ students });
     } catch (error) {
-      console.error("Error fetching students:", error);
+      logger.error("Error fetching students:", error);
       res.status(502).json({ 
         message: "Failed to fetch students from Google Sheets",
         hint: "Ensure the sheet is shared with the service account as Editor"
@@ -242,7 +243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         studentId
       });
     } catch (error) {
-      console.error("Error adding student:", error);
+      logger.error("Error adding student:", error);
 
       // Handle Zod validation errors
       if (error instanceof Error && error.name === 'ZodError') {
@@ -291,7 +292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ students: allPendingStudents });
     } catch (error) {
-      console.error("Error fetching pending students:", error);
+      logger.error("Error fetching pending students:", error);
       res.status(500).json({
         message: "Błąd podczas pobierania oczekujących uczniów",
         code: "FETCH_PENDING_ERROR"
@@ -322,7 +323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         studentId: data.studentId
       });
     } catch (error) {
-      console.error("Error approving student:", error);
+      logger.error("Error approving student:", error);
       res.status(500).json({
         message: "Błąd podczas zatwierdzania ucznia",
         code: "APPROVE_STUDENT_ERROR"
@@ -349,7 +350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         studentId: data.studentId
       });
     } catch (error) {
-      console.error("Error expelling student:", error);
+      logger.error("Error expelling student:", error);
       res.status(500).json({
         message: "Błąd podczas wypisywania ucznia",
         code: "EXPEL_STUDENT_ERROR"
@@ -371,7 +372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const attendance = await getAttendance(groupId as string, date as string);
       res.json(attendance);
     } catch (error) {
-      console.error("Error fetching attendance:", error);
+      logger.error("Error fetching attendance:", error);
       res.status(502).json({ 
         message: "Failed to fetch attendance from Google Sheets",
         hint: "Ensure the sheet is shared with the service account as Editor"
@@ -395,7 +396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasExistingAttendance = attendance.items.some(item => item.updated_at);
       res.json({ exists: hasExistingAttendance });
     } catch (error) {
-      console.error("Error checking attendance existence:", error);
+      logger.error("Error checking attendance existence:", error);
       res.status(502).json({ 
         message: "Failed to check attendance existence" 
       });
@@ -417,7 +418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await setAttendance(groupId, date, items);
       res.json(result);
     } catch (error) {
-      console.error("Error saving attendance:", error);
+      logger.error("Error saving attendance:", error);
       res.status(502).json({ 
         message: "Failed to save attendance to Google Sheets",
         hint: "Ensure the sheet is shared with the service account as Editor"
@@ -461,7 +462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await setAttendance(groupId, date, [updatedItem]);
       res.json({ success: true, item: updatedItem });
     } catch (error) {
-      console.error("Error saving notes:", error);
+      logger.error("Error saving notes:", error);
       res.status(502).json({ 
         message: "Failed to save notes to Google Sheets",
         hint: "Ensure the sheet is shared with the service account as Editor"
@@ -498,7 +499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({ instructors });
     } catch (error) {
-      console.error("Error fetching instructors from database:", error);
+      logger.error("Error fetching instructors from database:", error);
       res.status(502).json({ 
         message: "Failed to fetch instructors from database"
       });
@@ -511,7 +512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const instructorGroups = await getInstructorGroups();
       res.json({ instructorGroups });
     } catch (error) {
-      console.error("Error fetching instructor groups:", error);
+      logger.error("Error fetching instructor groups:", error);
       res.status(502).json({ 
         message: "Failed to fetch instructor groups from Google Sheets",
         hint: "Ensure the InstructorGroups sheet exists and is shared with the service account as Editor"
@@ -526,7 +527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const instructors = await getInstructorsForGroup(groupId);
       res.json({ instructors });
     } catch (error) {
-      console.error("Error fetching instructors for group:", error);
+      logger.error("Error fetching instructors for group:", error);
       res.status(502).json({ 
         message: "Failed to fetch instructors for group from Google Sheets",
         hint: "Ensure both Instructors and InstructorGroups sheets exist and are shared with the service account as Editor"
@@ -551,7 +552,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: `Added instructor ${instructorId} to group ${groupId}` 
       });
     } catch (error) {
-      console.error("Error adding instructor group assignment:", error);
+      logger.error("Error adding instructor group assignment:", error);
       res.status(502).json({ 
         message: "Failed to add instructor group assignment",
         hint: "Ensure the InstructorGroups sheet exists and is shared with the service account as Editor"
@@ -573,7 +574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const report = await getAttendanceReport(filters);
       res.json(report);
     } catch (error) {
-      console.error("Error generating attendance report:", error);
+      logger.error("Error generating attendance report:", error);
       res.status(502).json({ 
         message: "Failed to generate attendance report",
         hint: "Ensure the sheets are accessible and contain valid data"
@@ -613,7 +614,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Content-Disposition', `attachment; filename="raport-obecnosci-${new Date().toISOString().split('T')[0]}.csv"`);
       res.send('\uFEFF' + csvContent); // Add BOM for proper UTF-8 encoding in Excel
     } catch (error) {
-      console.error("Error generating CSV export:", error);
+      logger.error("Error generating CSV export:", error);
       res.status(502).json({ 
         message: "Failed to generate CSV export"
       });
@@ -757,7 +758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Content-Disposition', `attachment; filename="raport-obecnosci-${new Date().toISOString().split('T')[0]}.html"`);
       res.send(htmlToPdf);
     } catch (error) {
-      console.error("Error generating PDF export:", error);
+      logger.error("Error generating PDF export:", error);
       res.status(502).json({ 
         message: "Failed to generate PDF export"
       });
@@ -824,7 +825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: newUser.id 
       });
     } catch (error) {
-      console.error("Registration error:", error);
+      logger.error("Registration error:", error);
 
       // Handle Zod validation errors
       if (error instanceof Error && error.name === 'ZodError') {
@@ -870,7 +871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
       res.json({ users: pendingUsers });
     } catch (error) {
-      console.error("Error fetching pending users:", error);
+      logger.error("Error fetching pending users:", error);
       res.status(500).json({ 
         message: "Błąd podczas pobierania użytkowników",
         code: "FETCH_USERS_ERROR" 
@@ -916,7 +917,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user: updatedUser 
       });
     } catch (error) {
-      console.error("Error approving user:", error);
+      logger.error("Error approving user:", error);
       res.status(400).json({ 
         message: "Błąd podczas zatwierdzania użytkownika",
         code: "APPROVE_USER_ERROR" 
@@ -979,7 +980,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Hasło zostało zmienione pomyślnie"
       });
     } catch (error) {
-      console.error("Error changing password:", error);
+      logger.error("Error changing password:", error);
       res.status(500).json({
         message: "Błąd podczas zmiany hasła",
         code: "CHANGE_PASSWORD_ERROR"
@@ -1003,7 +1004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const users = await db.select().from(instructorsAuth).orderBy(instructorsAuth.createdAt);
       res.json({ users });
     } catch (error) {
-      console.error("Error fetching users:", error);
+      logger.error("Error fetching users:", error);
       res.status(500).json({
         message: "Błąd podczas pobierania użytkowników",
         code: "FETCH_USERS_ERROR"
@@ -1047,7 +1048,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Hasło zostało zmienione pomyślnie"
       });
     } catch (error) {
-      console.error("Error updating password:", error);
+      logger.error("Error updating password:", error);
       res.status(500).json({
         message: "Błąd podczas zmiany hasła",
         code: "UPDATE_PASSWORD_ERROR"
@@ -1120,7 +1121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error) {
-      console.error("Error creating user:", error);
+      logger.error("Error creating user:", error);
       res.status(500).json({
         message: "Błąd podczas tworzenia użytkownika",
         code: "CREATE_USER_ERROR"
@@ -1191,7 +1192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user: updatedUser
       });
     } catch (error) {
-      console.error("Error updating user:", error);
+      logger.error("Error updating user:", error);
       res.status(500).json({
         message: "Błąd podczas aktualizacji użytkownika",
         code: "UPDATE_USER_ERROR"
@@ -1279,7 +1280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error) {
-      console.error("Error updating user groups:", error);
+      logger.error("Error updating user groups:", error);
       res.status(500).json({
         message: "Błąd podczas aktualizacji grup użytkownika",
         code: "UPDATE_GROUPS_ERROR"
@@ -1337,7 +1338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         deletedUserId: userId
       });
     } catch (error) {
-      console.error("Error deleting user:", error);
+      logger.error("Error deleting user:", error);
       res.status(500).json({
         message: "Błąd podczas usuwania użytkownika",
         code: "USER_DELETE_ERROR"
@@ -1373,7 +1374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
       res.json({ configs });
     } catch (error) {
-      console.error("Error fetching groups configurations:", error);
+      logger.error("Error fetching groups configurations:", error);
       res.status(500).json({ 
         message: "Błąd podczas pobierania konfiguracji grup",
         code: "FETCH_CONFIGS_ERROR" 
@@ -1433,7 +1434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         config: newConfig
       });
     } catch (error) {
-      console.error("Error creating group configuration:", error);
+      logger.error("Error creating group configuration:", error);
       res.status(400).json({ 
         message: "Błąd podczas tworzenia konfiguracji grupy",
         code: "CREATE_CONFIG_ERROR" 
@@ -1496,7 +1497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         config: updatedConfig
       });
     } catch (error) {
-      console.error("Error updating group configuration:", error);
+      logger.error("Error updating group configuration:", error);
       res.status(500).json({
         message: "Błąd podczas aktualizacji konfiguracji grupy",
         code: "UPDATE_CONFIG_ERROR"
@@ -1553,7 +1554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         config: deletedConfig
       });
     } catch (error) {
-      console.error("Error deleting group configuration:", error);
+      logger.error("Error deleting group configuration:", error);
       res.status(500).json({
         message: "Błąd podczas usuwania konfiguracji grupy",
         code: "DELETE_CONFIG_ERROR"

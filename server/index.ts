@@ -1,10 +1,22 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { initializeSentry, sentryRequestHandler, sentryTracingHandler, sentryErrorHandler } from "./lib/sentry";
+import { logger } from "./lib/logger";
+import { metricsMiddleware, startMetricsLogging } from "./lib/metrics";
 
 const app = express();
+
+// Initialize Sentry (must be before other middleware)
+initializeSentry(app);
+app.use(sentryRequestHandler);
+app.use(sentryTracingHandler);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Performance metrics middleware
+app.use(metricsMiddleware());
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -39,12 +51,15 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
+  // Sentry error handler (must be before other error handlers)
+  app.use(sentryErrorHandler);
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
+    logger.error('Express error handler', { error: err.message, status, stack: err.stack });
     res.status(status).json({ message });
-    throw err;
   });
 
   // importantly only setup vite in development and after
@@ -67,5 +82,10 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+
+    // Start metrics logging every 15 minutes
+    if (process.env.NODE_ENV === 'production') {
+      startMetricsLogging(15);
+    }
   });
 })();

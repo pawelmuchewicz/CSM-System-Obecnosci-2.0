@@ -3,6 +3,7 @@ import type { Group, Student, AttendanceItem, Instructor, InstructorGroup, Atten
 import { db } from '../db';
 import { instructorsAuth, groupsConfig } from '@shared/schema';
 import { eq } from 'drizzle-orm';
+import { logger } from './logger';
 
 // Validate required environment variables
 if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
@@ -48,10 +49,13 @@ function getCacheKey(operation: string, ...params: any[]): string {
 function getFromCache<T>(key: string, maxAge: number = CACHE_DURATION): T | null {
   const item = cache.get(key);
   if (item && (Date.now() - item.timestamp) < maxAge) {
-    console.log(`Cache HIT for ${key}`);
+    logger.debug('Cache HIT', { key, age: Date.now() - item.timestamp });
     return item.data as T;
   }
-  if (item) cache.delete(key);
+  if (item) {
+    cache.delete(key);
+    logger.debug('Cache EXPIRED', { key });
+  }
   return null;
 }
 
@@ -62,7 +66,7 @@ function getFromCache<T>(key: string, maxAge: number = CACHE_DURATION): T | null
  */
 function setCache<T>(key: string, data: T): void {
   cache.set(key, { data, timestamp: Date.now() });
-  console.log(`Cache SET for ${key}`);
+  logger.debug('Cache SET', { key });
 }
 
 /**
@@ -77,13 +81,13 @@ function setCache<T>(key: string, data: T): void {
 export function clearCache(pattern?: string): void {
   if (pattern) {
     const keys = Array.from(cache.keys());
-    for (const key of keys) {
-      if (key.includes(pattern)) {
-        cache.delete(key);
-      }
-    }
+    const clearedKeys = keys.filter(key => key.includes(pattern));
+    clearedKeys.forEach(key => cache.delete(key));
+    logger.info('Cache cleared by pattern', { pattern, count: clearedKeys.length });
   } else {
+    const count = cache.size;
     cache.clear();
+    logger.info('Cache cleared completely', { count });
   }
 }
 
@@ -183,7 +187,7 @@ async function getSpreadsheetId(groupId: string): Promise<string> {
     
     throw new Error(`Unknown group: ${groupId}`);
   } catch (error) {
-    console.error(`Error getting spreadsheet ID for group ${groupId}:`, error);
+    logger.error('Error getting spreadsheet ID', { groupId, error: error instanceof Error ? error.message : error });
     throw error;
   }
 }
@@ -233,7 +237,7 @@ export async function getSheets() {
 
     return google.sheets({ version: 'v4', auth });
   } catch (error) {
-    console.error('Authentication failed:', error);
+    logger.error('Authentication failed:', error);
     if (error instanceof Error && error.message.includes('DECODER')) {
       throw new Error('Private key format is corrupted. Please ensure the key is properly copied with all line breaks intact.');
     }
@@ -308,7 +312,7 @@ export async function getGroups(): Promise<Group[]> {
     setCache(cacheKey, groups);
     return groups;
   } catch (error) {
-    console.error('Error fetching groups:', error);
+    logger.error('Error fetching groups:', error);
     // Fallback to hardcoded groups if database fails
     const groups = Object.entries(GROUPS_CONFIG).map(([id, config]) => ({
       id,
@@ -485,7 +489,7 @@ export async function getStudents(groupId?: string, showInactive: boolean = fals
     setCache(cacheKey, filteredStudents);
     return filteredStudents;
   } catch (error) {
-    console.error(`Failed to fetch students for group ${groupId}:`, error);
+    logger.error(`Failed to fetch students for group ${groupId}:`, error);
     throw new Error('Failed to fetch students from Google Sheets. Please ensure the sheet is shared with the service account as Editor.');
   }
 }
@@ -548,25 +552,25 @@ export async function addStudent(studentData: {
       new Date().toISOString(),           // M: created_at
     ];
 
-    console.log('=== ADD STUDENT DEBUG ===');
-    console.log('Student data received:', studentData);
-    console.log('Sheet Group ID:', sheetGroupId);
-    console.log('Row data to write:', rowData);
-    console.log('Row data mapping (CORRECT from screenshot):');
-    console.log(`  A (id): ${rowData[0]}`);
-    console.log(`  B (first_name): ${rowData[1]}`);
-    console.log(`  C (last_name): ${rowData[2]}`);
-    console.log(`  D (class): ${rowData[3]}`);
-    console.log(`  E (phone): ${rowData[4]}`);
-    console.log(`  F (mail): ${rowData[5]}`);
-    console.log(`  G (group_id): ${rowData[6]}`);
-    console.log(`  H (active): ${rowData[7]}`);
-    console.log(`  I (status): ${rowData[8]}`);
-    console.log(`  J (start_date): ${rowData[9]}`);
-    console.log(`  K (end_date): ${rowData[10]}`);
-    console.log(`  L (added_by): ${rowData[11]}`);
-    console.log(`  M (created_at): ${rowData[12]}`);
-    console.log('========================');
+    logger.info('=== ADD STUDENT DEBUG ===');
+    logger.info('Student data received:', studentData);
+    logger.info('Sheet Group ID:', sheetGroupId);
+    logger.info('Row data to write:', rowData);
+    logger.info('Row data mapping (CORRECT from screenshot):');
+    logger.info(`  A (id): ${rowData[0]}`);
+    logger.info(`  B (first_name): ${rowData[1]}`);
+    logger.info(`  C (last_name): ${rowData[2]}`);
+    logger.info(`  D (class): ${rowData[3]}`);
+    logger.info(`  E (phone): ${rowData[4]}`);
+    logger.info(`  F (mail): ${rowData[5]}`);
+    logger.info(`  G (group_id): ${rowData[6]}`);
+    logger.info(`  H (active): ${rowData[7]}`);
+    logger.info(`  I (status): ${rowData[8]}`);
+    logger.info(`  J (start_date): ${rowData[9]}`);
+    logger.info(`  K (end_date): ${rowData[10]}`);
+    logger.info(`  L (added_by): ${rowData[11]}`);
+    logger.info(`  M (created_at): ${rowData[12]}`);
+    logger.info('========================');
 
     // Find next empty row
     const existingResponse = await sheets.spreadsheets.values.get({
@@ -588,11 +592,11 @@ export async function addStudent(studentData: {
     // Clear cache for this group (both with and without inactive)
     clearCache(getCacheKey('students', studentData.groupId, 'true'));
     clearCache(getCacheKey('students', studentData.groupId, 'false'));
-    console.log(`✅ Cleared cache for group ${studentData.groupId}`);
+    logger.info(`✅ Cleared cache for group ${studentData.groupId}`);
 
     return studentId;
   } catch (error) {
-    console.error('Failed to add student:', error);
+    logger.error('Failed to add student:', error);
     throw new Error('Failed to add student to Google Sheets');
   }
 }
@@ -649,9 +653,9 @@ export async function approveStudent(studentId: string, groupId: string, endDate
     // Clear cache for this group (both with and without inactive)
     clearCache(getCacheKey('students', groupId, 'true'));
     clearCache(getCacheKey('students', groupId, 'false'));
-    console.log(`✅ Cleared cache for group ${groupId} after approval`);
+    logger.info(`✅ Cleared cache for group ${groupId} after approval`);
   } catch (error) {
-    console.error('Failed to approve student:', error);
+    logger.error('Failed to approve student:', error);
     throw new Error('Failed to approve student');
   }
 }
@@ -707,9 +711,9 @@ export async function expelStudent(studentId: string, groupId: string, endDate: 
     // Clear cache for this group (both with and without inactive)
     clearCache(getCacheKey('students', groupId, 'true'));
     clearCache(getCacheKey('students', groupId, 'false'));
-    console.log(`✅ Cleared cache for group ${groupId} after expelling student`);
+    logger.info(`✅ Cleared cache for group ${groupId} after expelling student`);
   } catch (error) {
-    console.error('Failed to expel student:', error);
+    logger.error('Failed to expel student:', error);
     throw new Error('Failed to expel student');
   }
 }
@@ -748,7 +752,7 @@ export async function findOrCreateSession(groupId: string, dateISO: string): Pro
 
     return sessionId;
   } catch (error) {
-    console.error('Error finding/creating session:', error);
+    logger.error('Error finding/creating session:', error);
     throw new Error('Failed to manage session in Google Sheets');
   }
 }
@@ -810,7 +814,7 @@ export async function getAttendance(groupId: string, dateISO: string): Promise<{
 
     return { session_id: sessionId, items };
   } catch (error) {
-    console.error('Error fetching attendance:', error);
+    logger.error('Error fetching attendance:', error);
     throw new Error('Failed to fetch attendance from Google Sheets');
   }
 }
@@ -964,7 +968,7 @@ export async function setAttendance(
 
     return { session_id: sessionId, updated, conflicts };
   } catch (error) {
-    console.error('Error setting attendance:', error);
+    logger.error('Error setting attendance:', error);
     throw new Error('Failed to save attendance to Google Sheets');
   }
 }
@@ -1043,7 +1047,7 @@ export async function getInstructors(): Promise<Instructor[]> {
 
     return instructors;
   } catch (error) {
-    console.error('Error fetching instructors:', error);
+    logger.error('Error fetching instructors:', error);
     throw new Error('Failed to fetch instructors from Google Sheets');
   }
 }
@@ -1106,7 +1110,7 @@ export async function getInstructorGroups(): Promise<InstructorGroup[]> {
 
     return instructorGroups;
   } catch (error) {
-    console.error('Error fetching instructor groups:', error);
+    logger.error('Error fetching instructor groups:', error);
     throw new Error('Failed to fetch instructor groups from Google Sheets');
   }
 }
@@ -1116,7 +1120,7 @@ export async function addInstructorGroupAssignment(instructorId: string, groupId
     const sheets = await getSheets();
     const mainSpreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID!;
 
-    console.log(`Adding instructor ${instructorId} to group ${groupId} with role ${role}`);
+    logger.info(`Adding instructor ${instructorId} to group ${groupId} with role ${role}`);
     
     // Check if assignment already exists
     const existingGroups = await getInstructorGroups();
@@ -1125,7 +1129,7 @@ export async function addInstructorGroupAssignment(instructorId: string, groupId
     );
     
     if (exists) {
-      console.log(`Assignment already exists for instructor ${instructorId} in group ${groupId}`);
+      logger.info(`Assignment already exists for instructor ${instructorId} in group ${groupId}`);
       return;
     }
 
@@ -1138,7 +1142,7 @@ export async function addInstructorGroupAssignment(instructorId: string, groupId
     const currentRows = currentResponse.data.values || [];
     const nextRow = currentRows.length + 1;
     
-    console.log(`Current InstructorGroups has ${currentRows.length} rows, adding to row ${nextRow}`);
+    logger.info(`Current InstructorGroups has ${currentRows.length} rows, adding to row ${nextRow}`);
 
     // Use direct update instead of append
     await sheets.spreadsheets.values.update({
@@ -1150,13 +1154,13 @@ export async function addInstructorGroupAssignment(instructorId: string, groupId
       }
     });
 
-    console.log(`Successfully added instructor ${instructorId} to group ${groupId} with role ${role} at row ${nextRow}`);
+    logger.info(`Successfully added instructor ${instructorId} to group ${groupId} with role ${role} at row ${nextRow}`);
     
     // Clear any caches that might be related to instructor groups
     clearCache('instructor-groups');
     
   } catch (error) {
-    console.error('Error adding instructor group assignment:', error);
+    logger.error('Error adding instructor group assignment:', error);
     throw new Error('Failed to add instructor group assignment to Google Sheets');
   }
 }
@@ -1167,7 +1171,7 @@ export async function addMultipleInstructorAssignments(assignments: Array<{instr
     const sheets = await getSheets();
     const mainSpreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID!;
 
-    console.log(`Adding ${assignments.length} instructor assignments`);
+    logger.info(`Adding ${assignments.length} instructor assignments`);
     
     // Check existing assignments
     const existingGroups = await getInstructorGroups();
@@ -1178,7 +1182,7 @@ export async function addMultipleInstructorAssignments(assignments: Array<{instr
     );
     
     if (newAssignments.length === 0) {
-      console.log('All assignments already exist');
+      logger.info('All assignments already exist');
       return;
     }
 
@@ -1212,13 +1216,13 @@ export async function addMultipleInstructorAssignments(assignments: Array<{instr
       }
     });
 
-    console.log(`Successfully added ${newAssignments.length} instructor assignments starting at row ${nextRow}`);
+    logger.info(`Successfully added ${newAssignments.length} instructor assignments starting at row ${nextRow}`);
     
     // Clear cache
     clearCache('instructor-groups');
     
   } catch (error) {
-    console.error('Error adding multiple instructor assignments:', error);
+    logger.error('Error adding multiple instructor assignments:', error);
     throw new Error('Failed to add instructor assignments to Google Sheets');
   }
 }
@@ -1291,7 +1295,7 @@ export async function getInstructorsForGroup(groupId: string): Promise<(Instruct
 
     return instructorsForGroup;
   } catch (error) {
-    console.error('Error fetching instructors for group:', error);
+    logger.error('Error fetching instructors for group:', error);
     throw new Error('Failed to fetch instructors for group');
   }
 }
@@ -1395,7 +1399,7 @@ export async function getAttendanceReport(filters: AttendanceReportFilters): Pro
         });
       }
       } catch (error) {
-        console.warn(`Skipping group ${group.id} due to access error:`, error);
+        logger.warn(`Skipping group ${group.id} due to access error:`, error);
         // Continue with other groups instead of failing the entire report
         continue;
       }
@@ -1418,7 +1422,7 @@ export async function getAttendanceReport(filters: AttendanceReportFilters): Pro
       totalStats
     };
   } catch (error) {
-    console.error('Error generating attendance report:', error);
+    logger.error('Error generating attendance report:', error);
     throw new Error('Failed to generate attendance report');
   }
 }
@@ -1451,7 +1455,7 @@ async function getGroupSessions(groupId: string, dateFrom?: string, dateTo?: str
 
     return sessions.sort((a, b) => a.date.localeCompare(b.date));
   } catch (error) {
-    console.error(`Error fetching sessions for group ${groupId}:`, error);
+    logger.error(`Error fetching sessions for group ${groupId}:`, error);
     return [];
   }
 }
@@ -1573,7 +1577,7 @@ export async function getUsersFromSheets(): Promise<UserSheetData[]> {
     setCache(cacheKey, users);
     return users;
   } catch (error) {
-    console.error('Error fetching users from sheets:', error);
+    logger.error('Error fetching users from sheets:', error);
     throw new Error('Failed to fetch users from Google Sheets');
   }
 }
@@ -1640,7 +1644,7 @@ export async function syncUserToSheets(user: UserSheetData): Promise<void> {
     // Clear cache
     clearCache('users_sheet');
   } catch (error) {
-    console.error('Error syncing user to sheets:', error);
+    logger.error('Error syncing user to sheets:', error);
     throw new Error('Failed to sync user to Google Sheets');
   }
 }
@@ -1691,7 +1695,7 @@ export async function removeUserFromSheets(username: string): Promise<void> {
     // Clear cache
     clearCache('users_sheet');
   } catch (error) {
-    console.error('Error removing user from sheets:', error);
+    logger.error('Error removing user from sheets:', error);
     throw new Error('Failed to remove user from Google Sheets');
   }
 }
@@ -1737,7 +1741,7 @@ export async function syncUsersToSheets(users: UserSheetData[]): Promise<void> {
     // Clear cache
     clearCache('users_sheet');
   } catch (error) {
-    console.error('Error syncing users to sheets:', error);
+    logger.error('Error syncing users to sheets:', error);
     throw new Error('Failed to sync users to Google Sheets');
   }
 }
