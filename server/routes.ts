@@ -11,6 +11,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session middleware
   setupSession(app);
 
+  // === HEALTH CHECK ENDPOINT ===
+  app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
   // === AUTHENTICATION ROUTES ===
 
   // POST /api/auth/login
