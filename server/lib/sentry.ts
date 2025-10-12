@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/node';
-import { ProfilingIntegration } from '@sentry/profiling-node';
 import type { Express } from 'express';
 
 /**
@@ -41,11 +40,10 @@ export function initializeSentry(app: Express) {
     // Performance monitoring
     tracesSampleRate: environment === 'production' ? 0.1 : 1.0, // 10% in prod, 100% in dev
 
-    // Profiling
-    profilesSampleRate: environment === 'production' ? 0.1 : 1.0,
-    integrations: [
-      new ProfilingIntegration(),
+    // Profiling (optional - can be added later if needed)
+    // profilesSampleRate: environment === 'production' ? 0.1 : 1.0,
 
+    integrations: [
       // Express integration
       new Sentry.Integrations.Http({ tracing: true }),
       new Sentry.Integrations.Express({ app }),
