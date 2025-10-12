@@ -1,6 +1,7 @@
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import path from 'path';
+import fs from 'fs';
 
 const { combine, timestamp, printf, colorize, errors } = winston.format;
 
@@ -23,6 +24,17 @@ const logFormat = printf(({ level, message, timestamp, stack, ...metadata }) => 
 
 // Create logs directory if it doesn't exist
 const logsDir = path.join(process.cwd(), 'logs');
+
+// Ensure logs directory exists
+try {
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+    console.log(`[Logger] Created logs directory: ${logsDir}`);
+  }
+} catch (error) {
+  console.error('[Logger] Failed to create logs directory:', error);
+  // Continue anyway - Winston will try to create it
+}
 
 // Define log level based on environment
 const level = process.env.NODE_ENV === 'production' ? 'info' : 'debug';

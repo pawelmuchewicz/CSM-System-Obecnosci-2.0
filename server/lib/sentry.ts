@@ -30,16 +30,8 @@ export function initializeSentry(app: Express) {
     return;
   }
 
-  // Get release version from package.json or git
-  let release = process.env.SENTRY_RELEASE;
-  if (!release) {
-    try {
-      const packageJson = require('../../package.json');
-      release = packageJson.version;
-    } catch {
-      release = 'unknown';
-    }
-  }
+  // Get release version from environment or default
+  const release = process.env.SENTRY_RELEASE || '1.0.0';
 
   Sentry.init({
     dsn,
