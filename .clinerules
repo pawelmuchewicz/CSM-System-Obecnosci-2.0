@@ -1,0 +1,371 @@
+# Instrukcje dla Claude - Tworzenie Wersji Deweloperskiej
+
+## Poziom doświadczenia użytkownika
+Użytkownik jest początkujący w programowaniu. Wymagane jest:
+- Proste, zrozumiałe wyjaśnienia
+- Wyjaśnienie każdego kroku PRZED jego wykonaniem
+- Czekanie na potwierdzenie użytkownika po każdym kroku
+- Ostrzeżenia gdy coś może wpłynąć na produkcję
+- Unikanie żargonu technicznego bez wyjaśnienia
+
+## Cel: Setup wersji deweloperskiej
+
+### Wymagania
+1. Branch `dev` w Git dla testowania zmian
+2. Osobny kontener w Coolify dla brancha `dev`
+3. Osobna baza danych testowa (Neon PostgreSQL)
+4. Produkcja (`main`) musi pozostać nietknięta
+5. Proces musi być powtarzalny dla przyszłych projektów
+
+### Aktualna konfiguracja produkcyjna
+- Branch: `main`
+- Hosting: Coolify
+- Baza danych: Neon PostgreSQL
+- Zmienne środowiskowe:
+  ```
+  DATABASE_URL=postgresql://neondb_owner:***@***.neon.tech/neondb?sslmode=require
+  GOOGLE_PRIVATE_KEY=(multiline)
+  GOOGLE_SERVICE_ACCOUNT_EMAIL=dance-attendance-sa@danceattendance.iam.gserviceaccount.com
+  GOOGLE_SHEETS_SPREADSHEET_ID=1qtM0b8yBwdYvv3fH9gmblmiKo0grqGT1ylNxFgDprUvE
+  NODE_ENV=production
+  PORT=5000
+  SESSION_SECRET=hjhjhu123uihkbhjkhjgjhgj
+  ```
+
+## Proces krok po kroku
+
+### Faza 1: Przygotowanie środowiska
+1. Sprawdź czy użytkownik ma:
+   - Dostęp do Neon Dashboard
+   - Sklonowane repozytorium lokalnie
+   - Zainstalowanego Git
+   - Dostęp do Coolify Dashboard
+2. Wyjaśnij co to jest branch i po co go tworzymy
+3. Wyjaśnij dlaczego potrzebujemy osobnej bazy danych
+
+### Faza 2: Utworzenie brancha dev
+1. Wyjaśnij co robi każda komenda Git
+2. Sprawdź aktualny status (`git status`)
+3. Utwórz branch `dev` (`git checkout -b dev`)
+4. Wypchnij na GitHub (`git push -u origin dev`)
+5. Zweryfikuj że branch jest na GitHubie
+
+### Faza 3: Utworzenie bazy danych testowej
+1. Przeprowadź przez Neon Dashboard
+2. Utwórz nowy projekt lub nową bazę
+3. Skopiuj connection string
+4. Wyjaśnij różnicę między bazą prod i dev
+
+### Faza 4: Konfiguracja Coolify - SZCZEGÓŁOWY PRZEWODNIK
+
+#### Krok 4.1: Wyjaśnienie koncepcji
+- Wyjaśnij że Coolify może deployować różne branche jako osobne aplikacje
+- Każda aplikacja dostanie własny URL (np. dev.twojadomena.pl lub auto-generowany)
+- Aplikacje są całkowicie niezależne (osobne kontenery, zmienne środowiskowe)
+
+#### Krok 4.2: Dodanie nowej aplikacji w Coolify
+Przeprowadź użytkownika przez interfejs Coolify:
+
+1. **Zaloguj się do Coolify Dashboard**
+   - Poproś o potwierdzenie że użytkownik jest zalogowany
+
+2. **Dodaj nową aplikację (Resource)**
+   - Kliknij "+ New" lub "Add Resource"
+   - Wybierz "Application"
+   - Wyjaśnij: "Teraz utworzymy drugą, niezależną aplikację dla wersji deweloperskiej"
+
+3. **Wybór źródła (Source)**
+   - Wybierz to samo repozytorium GitHub co produkcja
+   - Wyjaśnij: "To to samo repozytorium, ale za chwilę wybierzemy inny branch"
+
+4. **Wybór brancha**
+   - W polu "Branch" wybierz `dev` (zamiast `main`)
+   - Wyjaśnij: "To spowoduje że Coolify będzie deployować tylko zmiany z brancha dev"
+   - Poproś o screenshot potwierdzający wybór brancha
+
+5. **Nazwa aplikacji**
+   - Użyj nazwy: "DEV system obecnosci"
+   - Wyjaśnij: "Ta nazwa pomoże Ci rozróżnić aplikacje w dashboard"
+
+#### Krok 4.3: Konfiguracja buildu
+Przeprowadź przez ustawienia buildu:
+
+1. **Build Pack**: Zostaw "Nixpacks" (auto-detected)
+2. **Install Command**: `npm install`
+3. **Build Command**: `npm run build`
+4. **Start Command**: `npm run dev`
+5. **Port**: `5000`
+
+Wyjaśnij: "To dokładnie te same ustawienia co produkcja"
+
+#### Krok 4.4: Konfiguracja zmiennych środowiskowych
+To KLUCZOWY krok - prowadź bardzo ostrożnie:
+
+1. **Skopiuj wszystkie zmienne z produkcji**
+   - Pokaż jak otworzyć zmienne środowiskowe w aplikacji produkcyjnej
+   - Zaproponuj skopiowanie wszystkich zmiennych naraz
+
+2. **Wklej do aplikacji DEV**
+   - Przejdź do zakładki "Environment Variables" w nowej aplikacji dev
+   - Wklej wszystkie zmienne
+
+3. **ZMIEŃ te zmienne (WAŻNE!):**
+   ```
+   DATABASE_URL=<NOWY_URL_Z_NEON> (użyj connection stringa z Fazy 3)
+   NODE_ENV=development (było: production)
+   SESSION_SECRET=<NOWY_SECRET_DEV> (opcjonalnie, możesz wygenerować nowy)
+   ```
+
+4. **ZOSTAW bez zmian:**
+   ```
+   GOOGLE_PRIVATE_KEY=(ten sam - multiline, edytuj w "Normal view")
+   GOOGLE_SERVICE_ACCOUNT_EMAIL=(ten sam)
+   GOOGLE_SHEETS_SPREADSHEET_ID=(ten sam)
+   PORT=5000 (ten sam)
+   ```
+
+5. **Zweryfikuj zmienne**
+   - Poproś użytkownika o potwierdzenie że:
+     - `DATABASE_URL` to NOWA baza testowa (nie produkcyjna!)
+     - `NODE_ENV=development`
+     - Wszystkie inne zmienne są skopiowane
+
+#### Krok 4.5: Konfiguracja domeny/URL
+Przeprowadź przez setup URL:
+
+1. **Auto-generowana domena**
+   - Wyjaśnij: "Coolify automatycznie wygeneruje URL dla aplikacji dev"
+   - Pokaż gdzie znaleźć URL po deploymencie (zakładka "Domains")
+   - URL będzie wyglądał podobnie do: `http://xxxxx.168.231126.45.sslip.io`
+
+2. **Opcjonalna własna domena (zaawansowane)**
+   - Jeśli użytkownik ma własną domenę, zaproponuj subdomenę np: `dev.twojadomena.pl`
+   - Przeprowadź przez dodanie domeny w zakładce "Domains"
+   - Wyjaśnij że trzeba dodać rekord DNS
+
+3. **Zapisz URL**
+   - Poproś użytkownika o zapisanie URL dev w bezpiecznym miejscu
+   - Wyjaśnij: "Pod tym adresem będziesz testować zmiany przed wrzuceniem na produkcję"
+
+#### Krok 4.6: Pierwszy deployment
+Przeprowadź przez pierwszy deploy:
+
+1. **Zapisz wszystkie ustawienia**
+   - Upewnij się że użytkownik zapisał konfigurację
+
+2. **Uruchom deployment**
+   - Kliknij "Deploy" lub "Start"
+   - Wyjaśnij: "Coolify teraz zbuduje i uruchomi aplikację z brancha dev"
+
+3. **Monitoruj logi**
+   - Przejdź do zakładki "Logs" lub "Deployments"
+   - Wyjaśnij co się dzieje w logach
+   - Typowe kroki: "Installing dependencies", "Building", "Starting server"
+
+4. **Czekaj na sukces**
+   - Deployment może zająć 2-5 minut
+   - Poinformuj użytkownika że ma czekać na status "Running" lub "Deployed"
+
+5. **Co jeśli wystąpi błąd?**
+   - Sprawdź logi błędów
+   - Najczęstsze przyczyny:
+     - Błędny DATABASE_URL (sprawdź connection string)
+     - Brakujące zmienne środowiskowe
+     - Problem z buildem (sprawdź czy branch dev ma najnowszy kod)
+
+#### Krok 4.7: Test aplikacji DEV
+1. **Otwórz URL aplikacji dev w przeglądarce**
+   - Skopiuj URL z Coolify (zakładka "Domains")
+   - Otwórz w nowej karcie
+
+2. **Sprawdź czy działa:**
+   - Czy strona się ładuje?
+   - Czy możesz się zalogować?
+   - Czy dane są puste/inne niż na produkcji? (to DOBRZE!)
+
+3. **Zweryfikuj że to oddzielna aplikacja:**
+   - Zaloguj się na dev i na produkcję w osobnych kartach
+   - Sprawdź że mają różne dane (różne bazy!)
+   - Wyjaśnij: "To potwierdza że aplikacje są niezależne"
+
+#### Krok 4.8: Konfiguracja auto-deployment
+1. **Włącz automatyczne wdrażanie**
+   - W ustawieniach aplikacji znajdź "Auto Deploy" lub "Automatic Deployments"
+   - Włącz dla brancha `dev`
+   - Wyjaśnij: "Teraz za każdym razem gdy zrobisz git push do brancha dev, Coolify automatycznie wdroży zmiany"
+
+2. **Przetestuj auto-deployment**
+   - Zrób małą zmianę w kodzie (np. zmień tekst)
+   - `git add .`, `git commit`, `git push`
+   - Sprawdź w Coolify czy deployment się uruchomił automatycznie
+
+### Faza 5: Weryfikacja
+1. Sprawdź czy `main` (produkcja) działa normalnie
+2. Sprawdź czy `dev` działa na osobnym URL
+3. Sprawdź czy bazy danych są osobne
+4. Pokaż jak przełączać się między branchami
+
+### Faza 6: Workflow na przyszłość
+
+#### Opcja A: Workflow z lokalnym testowaniem (ZALECANE)
+Wyjaśnij użytkownikowi ten proces:
+
+1. **Przełącz się na branch dev**
+   ```bash
+   git checkout dev
+   ```
+
+2. **Wprowadź zmiany w kodzie** (edytuj pliki)
+
+3. **Testuj LOKALNIE** (na swoim komputerze)
+   ```bash
+   npm run dev  # Otwórz http://localhost:5000
+   ```
+   - Sprawdź czy zmiany działają
+   - Debug console.log w terminalu
+   - Hot reload - zmiany widoczne od razu
+
+4. **Jak działa lokalnie → commit i push**
+   ```bash
+   git add .
+   git commit -m "Opis zmian"
+   git push
+   ```
+
+5. **Coolify auto-deployuje na dev** (2-5 min)
+   - Sprawdź URL dev w przeglądarce (opcjonalnie, jeśli chcesz double-check)
+
+6. **Jak wszystko działa → ZAPYTAJ O ZGODĘ przed merge do main**
+
+   **WAŻNE: ZAWSZE pytaj użytkownika przed mergem do produkcji:**
+
+   "Widzę że zmiany działają na dev. Czy chcesz teraz przenieść je na produkcję (main)?"
+
+   **Czekaj na potwierdzenie użytkownika (tak/nie/później).**
+
+   Dopiero po potwierdzeniu:
+   ```bash
+   git checkout main
+   git merge dev
+   git push
+   ```
+
+7. **Coolify auto-deployuje na produkcję**
+
+**Wymagania dla testowania lokalnego:**
+- Node.js zainstalowany na komputerze
+- Plik `.env` z DATABASE_URL i innymi zmiennymi (użyj tych samych co dev w Coolify)
+- `npm install` wykonany lokalnie
+
+**Zalety:**
+- Natychmiastowy feedback
+- Nie czekasz na deployment (2-5 min za każdym razem)
+- Możesz pracować offline
+- Łatwy debugging
+
+#### Opcja B: Workflow tylko z Coolify dev (prostsze dla początkujących)
+Dla użytkowników którzy nie chcą setupować lokalnego środowiska:
+
+1. `git checkout dev` - przełącz się na dev
+2. Wprowadź zmiany w kodzie
+3. `git add .` i `git commit -m "opis"`
+4. `git push` - Coolify auto-deployuje dev (czekaj 2-5 min)
+5. Testuj na URL dev w przeglądarce
+6. Jak działa: `git checkout main` → `git merge dev` → `git push`
+7. Coolify auto-deployuje na produkcję
+
+**Zalety:**
+- Prostszy setup
+- Nie potrzeba Node.js lokalnie
+
+**Wady:**
+- Wolniejszy feedback (każdy test = 2-5 min deployment)
+
+#### Wybór workflow:
+Zapytaj użytkownika:
+- Jeśli ma Node.js i chce szybszy feedback → Opcja A
+- Jeśli chce prosty start bez instalacji → Opcja B
+- Może zacząć od B i później przejść na A
+
+## Zasady bezpieczeństwa
+- ZAWSZE sprawdzaj na jakim branchu jest użytkownik przed zmianami
+- ZAWSZE ostrzegaj przed operacjami na `main`
+- **NIGDY nie merguj do main bez wyraźnej zgody użytkownika**
+- **ZAWSZE pytaj: "Czy chcesz przenieść te zmiany na produkcję?" przed `git merge dev` → `main`**
+- NIGDY nie modyfikuj produkcyjnej bazy danych bez zgody
+- Wyjaśniaj ryzyko każdej operacji
+- Gdy użytkownik mówi o zmianach - zakładaj że pracuje na branchu `dev`
+
+## Komunikacja
+- Po każdym kroku pytaj: "Czy mogę przejść dalej?"
+- Używaj emotikonów tylko gdy użytkownik poprosi
+- Formatuj komendy wyraźnie w blokach kodu
+- Pokaż oczekiwany output każdej komendy
+
+## Troubleshooting
+Typowe problemy:
+- Konflikt przy merge - wyjaśnij jak rozwiązać
+- Błąd połączenia z bazą - sprawdź connection string
+- Coolify nie deployuje - sprawdź logi buildu
+- Git push rejected - wyjaśnij pull/push flow
+- **Status "unhealthy" w Coolify** - sprawdź czy aplikacja ma endpoint `/health` (powinien być w server/routes.ts:15)
+
+## Historia problemów
+
+### 2025-10-12: KRYTYCZNY - Aplikacja przestała działać po zmianach w buildzie
+**Problem:** Aplikacja pokazywała status "degraded" w Coolify i całkowicie przestała działać. Użytkownik musiał wrócić do ostatniej działającej wersji.
+
+**Przyczyna (wiele problemów naraz):**
+1. **Zmiana build output**: `dist/` → `build/` (próba ominięcia cache Dockera)
+2. **Problemy z esbuild**: Eksperymentowanie z flagami (`--minify=false`, `--keep-names`, `--drop:debugger`)
+3. **Usunięcie `--packages=external`**: Próba bundlowania wszystkich zależności zamiast external
+4. **Problemy z Winston logger**: Inicjalizacja loggera powodowała crash
+5. **Problemy z DATABASE_URL**: Błędy parsowania connection stringa
+6. **Zmiany w package.json**: Wersja 1.0.0 → 1.0.6 z wieloma zmianami w skryptach
+7. **Brak endpointu `/health`**: Coolify nie mógł zweryfikować stanu aplikacji
+
+**Seria nieudanych commitów** (widoczne w git reflog HEAD@{9-12 hours ago}):
+- `Fix: Remove --packages=external to bundle all dependencies`
+- `Fix: Disable esbuild minification to preserve console.log statements`
+- `BREAKING: Change output from dist/ to build/ to bypass Docker cache`
+- `FORCE: Disable all cache + bump version to 1.0.2`
+- `FORCE REBUILD: Add build timestamp banner`
+- `Fix: Wrap Winston initialization in try-catch with fallback`
+- ...i wiele innych desperackich prób naprawy
+
+**Rozwiązanie:**
+```bash
+git reset --hard 4f539f5  # Powrót do ostatniej działającej wersji
+```
+
+**Działająca konfiguracja (commit 4f539f5):**
+```json
+// package.json
+{
+  "version": "1.0.0",
+  "scripts": {
+    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "start": "NODE_ENV=production node dist/index.js"
+  }
+}
+```
+
+**Potem dodano tylko:**
+- Endpoint `/health` dla Coolify (commit fe51d8d)
+
+**KRYTYCZNE LEKCJE:**
+1. **NIGDY nie zmieniaj wielu rzeczy naraz** - jedna zmiana na raz, jeden commit, test, deploy
+2. **NIGDY nie eksperymentuj bezpośrednio na produkcji** - to dokładnie dlatego potrzebujemy brancha `dev`
+3. **Zachowaj prostą konfigurację buildu** - `--packages=external` działa, nie zmieniaj bez potrzeby
+4. **Nie bundluj wszystkiego** - zewnętrzne pakiety powinny pozostać external
+5. **Nie zmieniaj output directory** (dist → build) bez przemyślenia
+6. **Testuj lokalnie przed push** - `npm run build && npm run start` powinny działać lokalnie
+7. **Git reflog to Twój przyjaciel** - zawsze możesz wrócić do działającej wersji
+8. **Branch dev zapobiegnie takim katastrofom** - wszystkie eksperymenty tam, nie na produkcji
+
+**WAŻNE dla przyszłości:**
+Gdy coś nie działa i zaczynasz robić wiele commitów z "Fix:", "FORCE:", "BREAKING:" - **STOP**.
+Wróć do ostatniej działającej wersji i zacznij od nowa, pojedyncza zmiana na raz, na branchu dev.
+
+## Prompt do wykorzystania w przeglądarce
+Gdy użytkownik poprosi o prompt do claude.ai, wygeneruj spersonalizowany prompt bazując na tej instrukcji, uwzględniając aktualną konfigurację projektu.
