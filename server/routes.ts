@@ -2,10 +2,13 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { getGroups, getStudents, getAttendance, setAttendance, getInstructorGroups, getInstructorsForGroup, addInstructorGroupAssignment, getAttendanceReport, clearCache, addStudent, approveStudent, expelStudent } from "./lib/sheets";
 import { sql } from "drizzle-orm";
-import { attendanceRequestSchema, loginSchema, instructorsAuth, instructorGroupAssignments, registerInstructorSchema, updateUserStatusSchema, approveUserSchema, assignGroupSchema, groupsConfig, createGroupConfigSchema, updateGroupConfigSchema, addStudentSchema, approveStudentSchema, expelStudentSchema } from "@shared/schema";
+import { attendanceRequestSchema, loginSchema, instructorsAuth, instructorGroupAssignments, registerInstructorSchema, updateUserStatusSchema, approveUserSchema, assignGroupSchema, groupsConfig, createGroupConfigSchema, updateGroupConfigSchema, addStudentSchema, approveStudentSchema, expelStudentSchema, passwordResetTokens, forgotPasswordSchema, resetPasswordSchema, notifications, markNotificationReadSchema, deleteNotificationSchema } from "@shared/schema";
 import { setupSession, requireAuth, optionalAuth, requireGroupAccess, hashPassword, verifyPassword, type AuthenticatedRequest } from "./auth";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gt, desc } from "drizzle-orm";
+import { sendPasswordResetEmail } from "./lib/email";
+import { notifyStudentAdded, notifyStudentApproved, notifyStudentExpelled, notifyAttendanceNote } from "./lib/notifications";
+import crypto from "crypto";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session middleware
@@ -185,6 +188,315 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ user: req.user });
   });
 
+  // === PASSWORD RESET ROUTES ===
+
+  // POST /api/auth/forgot-password - Request password reset
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = forgotPasswordSchema.parse(req.body);
+
+      // Find user by email
+      const [user] = await db
+        .select({
+          id: instructorsAuth.id,
+          email: instructorsAuth.email,
+          firstName: instructorsAuth.firstName,
+          lastName: instructorsAuth.lastName,
+        })
+        .from(instructorsAuth)
+        .where(eq(instructorsAuth.email, email));
+
+      // Always return success message even if user doesn't exist (security best practice)
+      if (!user) {
+        return res.json({
+          message: "Jeśli podany adres email istnieje w systemie, wysłaliśmy na niego link do resetowania hasła."
+        });
+      }
+
+      // Generate secure random token
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+
+      // Save token to database
+      await db.insert(passwordResetTokens).values({
+        userId: user.id,
+        token,
+        expiresAt,
+        used: false,
+      });
+
+      // Send email with reset link
+      try {
+        await sendPasswordResetEmail(
+          email,
+          token,
+          `${user.firstName} ${user.lastName}`
+        );
+      } catch (emailError) {
+        console.error('Failed to send password reset email:', emailError);
+        return res.status(500).json({
+          message: "Błąd podczas wysyłania emaila. Spróbuj ponownie później.",
+          code: "EMAIL_SEND_ERROR"
+        });
+      }
+
+      res.json({
+        message: "Jeśli podany adres email istnieje w systemie, wysłaliśmy na niego link do resetowania hasła."
+      });
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      res.status(500).json({
+        message: "Błąd podczas przetwarzania żądania",
+        code: "FORGOT_PASSWORD_ERROR"
+      });
+    }
+  });
+
+  // POST /api/auth/reset-password - Reset password with token
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { token, newPassword } = resetPasswordSchema.parse(req.body);
+
+      // Find valid token
+      const [resetToken] = await db
+        .select({
+          id: passwordResetTokens.id,
+          userId: passwordResetTokens.userId,
+          used: passwordResetTokens.used,
+          expiresAt: passwordResetTokens.expiresAt,
+        })
+        .from(passwordResetTokens)
+        .where(and(
+          eq(passwordResetTokens.token, token),
+          eq(passwordResetTokens.used, false),
+          gt(passwordResetTokens.expiresAt, new Date())
+        ));
+
+      if (!resetToken) {
+        return res.status(400).json({
+          message: "Link do resetowania hasła jest nieprawidłowy lub wygasł. Wygeneruj nowy link.",
+          code: "INVALID_OR_EXPIRED_TOKEN"
+        });
+      }
+
+      // Hash new password
+      const hashedPassword = await hashPassword(newPassword);
+
+      // Update user password
+      await db
+        .update(instructorsAuth)
+        .set({
+          password: hashedPassword,
+          updatedAt: new Date()
+        })
+        .where(eq(instructorsAuth.id, resetToken.userId));
+
+      // Mark token as used
+      await db
+        .update(passwordResetTokens)
+        .set({ used: true })
+        .where(eq(passwordResetTokens.id, resetToken.id));
+
+      res.json({
+        message: "Hasło zostało zmienione pomyślnie. Możesz się teraz zalogować."
+      });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      res.status(500).json({
+        message: "Błąd podczas resetowania hasła",
+        code: "RESET_PASSWORD_ERROR"
+      });
+    }
+  });
+
+  // === NOTIFICATIONS ROUTES ===
+
+  // GET /api/notifications - Get current user's notifications
+  app.get("/api/notifications", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          message: "Użytkownik nie jest zalogowany",
+          code: "UNAUTHORIZED"
+        });
+      }
+
+      const userNotifications = await db
+        .select({
+          id: notifications.id,
+          type: notifications.type,
+          title: notifications.title,
+          message: notifications.message,
+          metadata: notifications.metadata,
+          read: notifications.read,
+          createdAt: notifications.createdAt,
+          createdBy: notifications.createdBy,
+        })
+        .from(notifications)
+        .where(eq(notifications.recipientId, userId))
+        .orderBy(desc(notifications.createdAt));
+
+      res.json({ notifications: userNotifications });
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({
+        message: "Błąd podczas pobierania powiadomień",
+        code: "FETCH_NOTIFICATIONS_ERROR"
+      });
+    }
+  });
+
+  // GET /api/notifications/unread-count - Get count of unread notifications
+  app.get("/api/notifications/unread-count", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          message: "Użytkownik nie jest zalogowany",
+          code: "UNAUTHORIZED"
+        });
+      }
+
+      const result = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(notifications)
+        .where(and(
+          eq(notifications.recipientId, userId),
+          eq(notifications.read, false)
+        ));
+
+      const count = result[0]?.count || 0;
+      res.json({ count: Number(count) });
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+      res.status(500).json({
+        message: "Błąd podczas pobierania liczby nieprzeczytanych powiadomień",
+        code: "FETCH_UNREAD_COUNT_ERROR"
+      });
+    }
+  });
+
+  // PATCH /api/notifications/:id/read - Mark notification as read
+  app.patch("/api/notifications/:id/read", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          message: "Użytkownik nie jest zalogowany",
+          code: "UNAUTHORIZED"
+        });
+      }
+
+      const notificationId = parseInt(req.params.id);
+      if (!notificationId) {
+        return res.status(400).json({
+          message: "Nieprawidłowe ID powiadomienia",
+          code: "INVALID_NOTIFICATION_ID"
+        });
+      }
+
+      // Update notification - only if it belongs to current user
+      const [updated] = await db
+        .update(notifications)
+        .set({ read: true })
+        .where(and(
+          eq(notifications.id, notificationId),
+          eq(notifications.recipientId, userId)
+        ))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({
+          message: "Powiadomienie nie zostało znalezione",
+          code: "NOTIFICATION_NOT_FOUND"
+        });
+      }
+
+      res.json({ message: "Powiadomienie oznaczone jako przeczytane", notification: updated });
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({
+        message: "Błąd podczas oznaczania powiadomienia jako przeczytane",
+        code: "MARK_READ_ERROR"
+      });
+    }
+  });
+
+  // POST /api/notifications/mark-all-read - Mark all notifications as read
+  app.post("/api/notifications/mark-all-read", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          message: "Użytkownik nie jest zalogowany",
+          code: "UNAUTHORIZED"
+        });
+      }
+
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(and(
+          eq(notifications.recipientId, userId),
+          eq(notifications.read, false)
+        ));
+
+      res.json({ message: "Wszystkie powiadomienia oznaczone jako przeczytane" });
+    } catch (error) {
+      console.error("Error marking all as read:", error);
+      res.status(500).json({
+        message: "Błąd podczas oznaczania wszystkich powiadomień jako przeczytane",
+        code: "MARK_ALL_READ_ERROR"
+      });
+    }
+  });
+
+  // DELETE /api/notifications/:id - Delete notification
+  app.delete("/api/notifications/:id", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          message: "Użytkownik nie jest zalogowany",
+          code: "UNAUTHORIZED"
+        });
+      }
+
+      const notificationId = parseInt(req.params.id);
+      if (!notificationId) {
+        return res.status(400).json({
+          message: "Nieprawidłowe ID powiadomienia",
+          code: "INVALID_NOTIFICATION_ID"
+        });
+      }
+
+      // Delete notification - only if it belongs to current user
+      const [deleted] = await db
+        .delete(notifications)
+        .where(and(
+          eq(notifications.id, notificationId),
+          eq(notifications.recipientId, userId)
+        ))
+        .returning();
+
+      if (!deleted) {
+        return res.status(404).json({
+          message: "Powiadomienie nie zostało znalezione",
+          code: "NOTIFICATION_NOT_FOUND"
+        });
+      }
+
+      res.json({ message: "Powiadomienie zostało usunięte" });
+    } catch (error) {
+      console.error("Error deleting notification:", error);
+      res.status(500).json({
+        message: "Błąd podczas usuwania powiadomienia",
+        code: "DELETE_NOTIFICATION_ERROR"
+      });
+    }
+  });
+
   // === PROTECTED ROUTES ===
 
   // GET /api/groups (now requires authentication)
@@ -256,6 +568,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mail: data.mail,
         addedBy: String(req.user?.id),
       });
+
+      // Send notification to reception and owner
+      try {
+        const groups = await getGroups();
+        const group = groups.find(g => g.id === data.groupId);
+        const missingFields = [];
+        if (!data.mail || data.mail.trim() === '') missingFields.push('email');
+        if (!data.phone || data.phone.trim() === '') missingFields.push('telefon');
+
+        await notifyStudentAdded(
+          `${data.firstName} ${data.lastName}`,
+          data.groupId,
+          group?.name || data.groupId,
+          missingFields,
+          req.user!.id
+        );
+      } catch (notificationError) {
+        console.error('Error sending notification:', notificationError);
+        // Don't fail the request if notification fails
+      }
 
       res.status(201).json({
         message: "Uczeń został dodany i oczekuje na zatwierdzenie",
@@ -331,11 +663,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const data = approveStudentSchema.parse(req.body);
 
+      // Get student info before approving
+      const students = await getStudents(data.groupId, true);
+      const student = students.find(s => s.id === data.studentId);
+
       await approveStudent(
         data.studentId,
         data.groupId,
         data.endDate && data.endDate.trim() !== '' ? data.endDate : undefined
       );
+
+      // Send notification to the instructor who added this student
+      if (student && student.added_by) {
+        try {
+          const groups = await getGroups();
+          const group = groups.find(g => g.id === data.groupId);
+          const instructorId = parseInt(student.added_by);
+
+          if (!isNaN(instructorId)) {
+            await notifyStudentApproved(
+              `${student.first_name} ${student.last_name}`,
+              data.groupId,
+              group?.name || data.groupId,
+              instructorId,
+              req.user!.id
+            );
+          }
+        } catch (notificationError) {
+          console.error('Error sending notification:', notificationError);
+          // Don't fail the request if notification fails
+        }
+      }
 
       res.json({
         message: "Uczeń został zatwierdzony",
@@ -362,7 +720,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const data = expelStudentSchema.parse(req.body);
 
+      // Get student info before expelling
+      const students = await getStudents(data.groupId, true);
+      const student = students.find(s => s.id === data.studentId);
+
       await expelStudent(data.studentId, data.groupId, data.endDate);
+
+      // Send notification to the instructor who added this student
+      if (student && student.added_by) {
+        try {
+          const groups = await getGroups();
+          const group = groups.find(g => g.id === data.groupId);
+          const instructorId = parseInt(student.added_by);
+
+          if (!isNaN(instructorId)) {
+            await notifyStudentExpelled(
+              `${student.first_name} ${student.last_name}`,
+              data.groupId,
+              group?.name || data.groupId,
+              data.endDate,
+              instructorId,
+              req.user!.id
+            );
+          }
+        } catch (notificationError) {
+          console.error('Error sending notification:', notificationError);
+          // Don't fail the request if notification fails
+        }
+      }
 
       res.json({
         message: "Uczeń został wypisany",
@@ -446,29 +831,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/attendance/notes - Save notes for specific student
-  app.post("/api/attendance/notes", async (req, res) => {
+  app.post("/api/attendance/notes", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { groupId, date, student_id, notes } = req.body;
-      
+
       if (!groupId || !date || !student_id) {
-        return res.status(400).json({ 
-          message: "Missing required fields: groupId, date, student_id" 
+        return res.status(400).json({
+          message: "Missing required fields: groupId, date, student_id"
         });
       }
 
       // Get current attendance to preserve status
       const currentAttendance = await getAttendance(groupId, date);
       const existingItem = currentAttendance.items.find(item => item.student_id === student_id);
-      
+
       // IMPORTANT: Only add notes if student already has some attendance status
       // Don't create attendance record just for notes!
       if (!existingItem || !existingItem.status) {
-        return res.status(400).json({ 
-          message: "Nie można dodać notatki do studenta który nie ma ustalonej obecności. Najpierw oznacz obecność (obecny/nieobecny).", 
+        return res.status(400).json({
+          message: "Nie można dodać notatki do studenta który nie ma ustalonej obecności. Najpierw oznacz obecność (obecny/nieobecny).",
           code: "NO_ATTENDANCE_STATUS"
         });
       }
-      
+
       // Create updated item with notes (preserve existing status)
       const updatedItem = {
         student_id,
@@ -478,11 +863,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Save the updated attendance item
-      const result = await setAttendance(groupId, date, [updatedItem]);
+      await setAttendance(groupId, date, [updatedItem]);
+
+      // Send notification to reception and owner if notes were added
+      if (notes && notes.trim() !== '') {
+        try {
+          const students = await getStudents(groupId, true);
+          const student = students.find(s => s.id === student_id);
+          const groups = await getGroups();
+          const group = groups.find(g => g.id === groupId);
+
+          if (student) {
+            await notifyAttendanceNote(
+              `${student.first_name} ${student.last_name}`,
+              groupId,
+              group?.name || groupId,
+              date,
+              notes,
+              req.user!.id
+            );
+          }
+        } catch (notificationError) {
+          console.error('Error sending notification:', notificationError);
+          // Don't fail the request if notification fails
+        }
+      }
+
       res.json({ success: true, item: updatedItem });
     } catch (error) {
       console.error("Error saving notes:", error);
-      res.status(502).json({ 
+      res.status(502).json({
         message: "Failed to save notes to Google Sheets",
         hint: "Ensure the sheet is shared with the service account as Editor"
       });
@@ -1577,6 +1987,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         message: "Błąd podczas usuwania konfiguracji grupy",
         code: "DELETE_CONFIG_ERROR"
+      });
+    }
+  });
+
+  // === CACHE MANAGEMENT ROUTES ===
+
+  // POST /api/admin/clear-cache - Clear all cache (owner only)
+  app.post("/api/admin/clear-cache", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      if (req.user?.role !== 'owner') {
+        return res.status(403).json({
+          message: "Tylko właściciel może czyścić cache",
+          code: "INSUFFICIENT_PERMISSIONS"
+        });
+      }
+
+      const pattern = req.body.pattern as string | undefined;
+      clearCache(pattern);
+
+      res.json({
+        message: pattern ? `Cache wyczyszczony dla wzorca: ${pattern}` : "Cały cache został wyczyszczony",
+        pattern: pattern || "all"
+      });
+    } catch (error) {
+      console.error("Error clearing cache:", error);
+      res.status(500).json({
+        message: "Błąd podczas czyszczenia cache",
+        code: "CLEAR_CACHE_ERROR"
+      });
+    }
+  });
+
+  // GET /api/debug/user-info - Debug user session and permissions
+  app.get("/api/debug/user-info", requireAuth, async (req: AuthenticatedRequest, res) => {
+    try {
+      const user = req.user;
+      const groups = await getGroups();
+
+      res.json({
+        sessionUser: user,
+        availableGroups: groups,
+        filteredGroupsForUser: groups.filter(g =>
+          user?.isAdmin || user?.groupIds.includes(g.id)
+        ),
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error getting user debug info:", error);
+      res.status(500).json({
+        message: "Błąd podczas pobierania informacji debugowych",
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   });
