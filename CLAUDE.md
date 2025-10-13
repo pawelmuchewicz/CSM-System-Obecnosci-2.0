@@ -153,7 +153,7 @@ SESSION_SECRET=hjhjhu123uihkbhjkhjgjhgj
 ```
 
 **Domain:**
-- Auto-generated Coolify domain: `http://rokscwcg88sogk4w04owcgks.168.231126.45.sslip.io`
+- Auto-generated Coolify domain: `http://rgcocw0ogsg8ccgo880soc4o.168.231.126.45.sslip.io`
 
 **Deployment Process:**
 1. Push code to GitHub repository
