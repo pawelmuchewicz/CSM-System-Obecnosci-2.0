@@ -96,7 +96,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error(`Failed to parse groupIds for user ${user.username}:`, error);
         groupIds = [];
       }
-      console.log(`User ${user.username} groupIds:`, groupIds);
 
       // Get user's permissions and role info
       const userRole = (user.role || 'instructor') as 'owner' | 'reception' | 'instructor';
@@ -155,11 +154,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Login error:", error);
-      console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
-      console.error("Error details:", {
-        name: error instanceof Error ? error.name : 'Unknown',
-        message: error instanceof Error ? error.message : String(error)
-      });
       res.status(500).json({
         message: "Błąd podczas logowania. Spróbuj ponownie lub skontaktuj się z administratorem.",
         code: "LOGIN_ERROR",
@@ -233,7 +227,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           `${user.firstName} ${user.lastName}`
         );
       } catch (emailError) {
-        console.error('Failed to send password reset email:', emailError);
         return res.status(500).json({
           message: "Błąd podczas wysyłania emaila. Spróbuj ponownie później.",
           code: "EMAIL_SEND_ERROR"
@@ -990,7 +983,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/reports/attendance
-  app.get("/api/reports/attendance", async (req, res) => {
+  app.get("/api/reports/attendance", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const filters = {
         groupIds: req.query.groupIds ? (req.query.groupIds as string).split(',') : undefined,
@@ -1012,7 +1005,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/export/csv
-  app.get("/api/export/csv", async (req, res) => {
+  app.get("/api/export/csv", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const filters = {
         groupIds: req.query.groupIds ? (req.query.groupIds as string).split(',') : undefined,
@@ -1051,7 +1044,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/export/pdf
-  app.get("/api/export/pdf", async (req, res) => {
+  app.get("/api/export/pdf", requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const filters = {
         groupIds: req.query.groupIds ? (req.query.groupIds as string).split(',') : undefined,

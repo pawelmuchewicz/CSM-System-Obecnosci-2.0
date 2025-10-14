@@ -197,7 +197,6 @@ export default function AttendancePage() {
         saveAttendanceMutation.mutate({ groupId: selectedGroup, date: selectedDate, items });
       }
     } catch (error) {
-      console.error('Error checking attendance existence:', error);
       // If check fails, save anyway
       saveAttendanceMutation.mutate({ groupId: selectedGroup, date: selectedDate, items });
     }

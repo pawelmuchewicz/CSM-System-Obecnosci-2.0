@@ -36,7 +36,6 @@ function getCacheKey(operation: string, ...params: any[]): string {
 function getFromCache<T>(key: string, maxAge: number = CACHE_DURATION): T | null {
   const item = cache.get(key);
   if (item && (Date.now() - item.timestamp) < maxAge) {
-    console.log(`Cache HIT for ${key}`);
     return item.data as T;
   }
   if (item) cache.delete(key);
@@ -45,7 +44,6 @@ function getFromCache<T>(key: string, maxAge: number = CACHE_DURATION): T | null
 
 function setCache<T>(key: string, data: T): void {
   cache.set(key, { data, timestamp: Date.now() });
-  console.log(`Cache SET for ${key}`);
 }
 
 export function clearCache(pattern?: string): void {
@@ -492,26 +490,6 @@ export async function addStudent(studentData: {
       new Date().toISOString(),           // M: created_at
     ];
 
-    console.log('=== ADD STUDENT DEBUG ===');
-    console.log('Student data received:', studentData);
-    console.log('Sheet Group ID:', sheetGroupId);
-    console.log('Row data to write:', rowData);
-    console.log('Row data mapping (CORRECT from screenshot):');
-    console.log(`  A (id): ${rowData[0]}`);
-    console.log(`  B (first_name): ${rowData[1]}`);
-    console.log(`  C (last_name): ${rowData[2]}`);
-    console.log(`  D (class): ${rowData[3]}`);
-    console.log(`  E (phone): ${rowData[4]}`);
-    console.log(`  F (mail): ${rowData[5]}`);
-    console.log(`  G (group_id): ${rowData[6]}`);
-    console.log(`  H (active): ${rowData[7]}`);
-    console.log(`  I (status): ${rowData[8]}`);
-    console.log(`  J (start_date): ${rowData[9]}`);
-    console.log(`  K (end_date): ${rowData[10]}`);
-    console.log(`  L (added_by): ${rowData[11]}`);
-    console.log(`  M (created_at): ${rowData[12]}`);
-    console.log('========================');
-
     // Find next empty row
     const existingResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -532,7 +510,6 @@ export async function addStudent(studentData: {
     // Clear cache for this group (both with and without inactive)
     clearCache(getCacheKey('students', studentData.groupId, 'true'));
     clearCache(getCacheKey('students', studentData.groupId, 'false'));
-    console.log(`✅ Cleared cache for group ${studentData.groupId}`);
 
     return studentId;
   } catch (error) {
@@ -593,7 +570,6 @@ export async function approveStudent(studentId: string, groupId: string, endDate
     // Clear cache for this group (both with and without inactive)
     clearCache(getCacheKey('students', groupId, 'true'));
     clearCache(getCacheKey('students', groupId, 'false'));
-    console.log(`✅ Cleared cache for group ${groupId} after approval`);
   } catch (error) {
     console.error('Failed to approve student:', error);
     throw new Error('Failed to approve student');
@@ -651,7 +627,6 @@ export async function expelStudent(studentId: string, groupId: string, endDate: 
     // Clear cache for this group (both with and without inactive)
     clearCache(getCacheKey('students', groupId, 'true'));
     clearCache(getCacheKey('students', groupId, 'false'));
-    console.log(`✅ Cleared cache for group ${groupId} after expelling student`);
   } catch (error) {
     console.error('Failed to expel student:', error);
     throw new Error('Failed to expel student');
@@ -1045,16 +1020,13 @@ export async function addInstructorGroupAssignment(instructorId: string, groupId
     const sheets = await getSheets();
     const mainSpreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID!;
 
-    console.log(`Adding instructor ${instructorId} to group ${groupId} with role ${role}`);
-    
     // Check if assignment already exists
     const existingGroups = await getInstructorGroups();
     const exists = existingGroups.some(ig => 
       ig.instructor_id === instructorId && ig.group_id === groupId
     );
-    
+
     if (exists) {
-      console.log(`Assignment already exists for instructor ${instructorId} in group ${groupId}`);
       return;
     }
 
@@ -1063,11 +1035,9 @@ export async function addInstructorGroupAssignment(instructorId: string, groupId
       spreadsheetId: mainSpreadsheetId,
       range: 'InstructorGroups!A:F'
     });
-    
+
     const currentRows = currentResponse.data.values || [];
     const nextRow = currentRows.length + 1;
-    
-    console.log(`Current InstructorGroups has ${currentRows.length} rows, adding to row ${nextRow}`);
 
     // Use direct update instead of append
     await sheets.spreadsheets.values.update({
@@ -1079,8 +1049,6 @@ export async function addInstructorGroupAssignment(instructorId: string, groupId
       }
     });
 
-    console.log(`Successfully added instructor ${instructorId} to group ${groupId} with role ${role} at row ${nextRow}`);
-    
     // Clear any caches that might be related to instructor groups
     clearCache('instructor-groups');
     
@@ -1096,8 +1064,6 @@ export async function addMultipleInstructorAssignments(assignments: Array<{instr
     const sheets = await getSheets();
     const mainSpreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID!;
 
-    console.log(`Adding ${assignments.length} instructor assignments`);
-    
     // Check existing assignments
     const existingGroups = await getInstructorGroups();
     const newAssignments = assignments.filter(assignment => 
@@ -1105,9 +1071,8 @@ export async function addMultipleInstructorAssignments(assignments: Array<{instr
         ig.instructor_id === assignment.instructorId && ig.group_id === assignment.groupId
       )
     );
-    
+
     if (newAssignments.length === 0) {
-      console.log('All assignments already exist');
       return;
     }
 
@@ -1141,8 +1106,6 @@ export async function addMultipleInstructorAssignments(assignments: Array<{instr
       }
     });
 
-    console.log(`Successfully added ${newAssignments.length} instructor assignments starting at row ${nextRow}`);
-    
     // Clear cache
     clearCache('instructor-groups');
     
@@ -1460,213 +1423,7 @@ function normalizeUserStatus(status: string): string {
     'inactive': 'inactive',
     'pending': 'pending'
   };
-  
+
   const normalizedStatus = status.toLowerCase().trim();
   return statusMap[normalizedStatus] || 'active';
-}
-
-export async function getUsersFromSheets(): Promise<UserSheetData[]> {
-  try {
-    const cacheKey = getCacheKey('users_sheet');
-    const cached = getFromCache<UserSheetData[]>(cacheKey, CACHE_DURATION);
-    if (cached) return cached;
-
-    const sheets = await getSheets();
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: USERS_SPREADSHEET_ID,
-      range: 'A1:H1000' // Extended to include groups column
-    });
-
-    const rows = response.data.values || [];
-    const users: UserSheetData[] = [];
-    
-    // Skip header row (row 0)
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i];
-      if (row && row[0]) { // username is required
-        const rawRole = row[4] || 'instructor';
-        const rawStatus = row[5] || 'active';
-        users.push({
-          username: row[0] || '',
-          firstName: row[1] || '',
-          lastName: row[2] || '',
-          email: row[3] || '',
-          role: normalizeRole(rawRole),
-          status: normalizeUserStatus(rawStatus),
-          active: row[6] === 'TRUE' || row[6] === 'true' || row[6] === '1',
-          groups: row[7] || '' // Groups column
-        });
-      }
-    }
-
-    setCache(cacheKey, users);
-    return users;
-  } catch (error) {
-    console.error('Error fetching users from sheets:', error);
-    throw new Error('Failed to fetch users from Google Sheets');
-  }
-}
-
-/**
- * Write a single user to Google Sheets
- * Updates existing user or adds new user
- */
-export async function syncUserToSheets(user: UserSheetData): Promise<void> {
-  try {
-    const sheets = await getSheets();
-    
-    // First get all users to find if user exists
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: USERS_SPREADSHEET_ID,
-      range: 'A1:H1000' // Extended to include groups column
-    });
-
-    const rows = response.data.values || [];
-    let userRowIndex = -1;
-    
-    // Find existing user row
-    for (let i = 1; i < rows.length; i++) {
-      if (rows[i] && rows[i][0] === user.username) {
-        userRowIndex = i + 1; // +1 because sheets are 1-indexed
-        break;
-      }
-    }
-
-    const userData = [
-      user.username,
-      user.firstName,
-      user.lastName,
-      user.email,
-      roleToPolish(user.role),
-      statusToPolish(user.status),
-      user.active ? 'TRUE' : 'FALSE',
-      user.groups || '' // Groups column
-    ];
-
-    if (userRowIndex > 0) {
-      // Update existing user
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: USERS_SPREADSHEET_ID,
-        range: `A${userRowIndex}:H${userRowIndex}`,
-        valueInputOption: 'RAW',
-        requestBody: {
-          values: [userData]
-        }
-      });
-    } else {
-      // Add new user - find first empty row
-      let nextRow = rows.length + 1;
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: USERS_SPREADSHEET_ID,
-        range: `A${nextRow}:H${nextRow}`,
-        valueInputOption: 'RAW',
-        requestBody: {
-          values: [userData]
-        }
-      });
-    }
-
-    // Clear cache
-    clearCache('users_sheet');
-  } catch (error) {
-    console.error('Error syncing user to sheets:', error);
-    throw new Error('Failed to sync user to Google Sheets');
-  }
-}
-
-/**
- * Remove a user from Google Sheets
- */
-export async function removeUserFromSheets(username: string): Promise<void> {
-  try {
-    const sheets = await getSheets();
-    
-    // First get all users to find the row to delete
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: USERS_SPREADSHEET_ID,
-      range: 'A1:H1000' // Extended to include groups column
-    });
-
-    const rows = response.data.values || [];
-    let userRowIndex = -1;
-    
-    // Find user row (skip header row)
-    for (let i = 1; i < rows.length; i++) {
-      if (rows[i] && rows[i][0] === username) {
-        userRowIndex = i + 1; // +1 because sheets are 1-indexed
-        break;
-      }
-    }
-
-    if (userRowIndex > 0) {
-      // Delete the row
-      await sheets.spreadsheets.batchUpdate({
-        spreadsheetId: USERS_SPREADSHEET_ID,
-        requestBody: {
-          requests: [{
-            deleteDimension: {
-              range: {
-                sheetId: 0,
-                dimension: 'ROWS',
-                startIndex: userRowIndex - 1, // Convert to 0-indexed
-                endIndex: userRowIndex
-              }
-            }
-          }]
-        }
-      });
-    }
-
-    // Clear cache
-    clearCache('users_sheet');
-  } catch (error) {
-    console.error('Error removing user from sheets:', error);
-    throw new Error('Failed to remove user from Google Sheets');
-  }
-}
-
-/**
- * Sync all users from database to Google Sheets
- * This will overwrite the entire sheet with database data
- */
-export async function syncUsersToSheets(users: UserSheetData[]): Promise<void> {
-  try {
-    const sheets = await getSheets();
-    
-    // Prepare data with header
-    const header = ['username', 'first_name', 'last_name', 'email', 'role', 'status', 'active'];
-    const data = [
-      header,
-      ...users.map(user => [
-        user.username,
-        user.firstName,
-        user.lastName,
-        user.email,
-        roleToPolish(user.role),
-        statusToPolish(user.status),
-        user.active ? 'TRUE' : 'FALSE'
-      ])
-    ];
-
-    // Clear existing data and write new data
-    await sheets.spreadsheets.values.clear({
-      spreadsheetId: USERS_SPREADSHEET_ID,
-      range: 'A:G'
-    });
-
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: USERS_SPREADSHEET_ID,
-      range: 'A1',
-      valueInputOption: 'RAW',
-      requestBody: {
-        values: data
-      }
-    });
-
-    // Clear cache
-    clearCache('users_sheet');
-  } catch (error) {
-    console.error('Error syncing users to sheets:', error);
-    throw new Error('Failed to sync users to Google Sheets');
-  }
 }
