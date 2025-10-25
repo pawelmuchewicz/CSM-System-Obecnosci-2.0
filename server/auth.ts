@@ -1,6 +1,5 @@
 import bcrypt from 'bcrypt';
 import session from 'express-session';
-import connectPg from 'connect-pg-simple';
 import type { Express, Request, Response, NextFunction } from 'express';
 import { db } from './db';
 import { instructorsAuth, instructorGroupAssignments, type UserPermissions, type UserRole } from '@shared/schema';
@@ -18,27 +17,10 @@ import { eq } from 'drizzle-orm';
  * @param app - Express application instance
  */
 export function setupSession(app: Express) {
-  // Use memory store for development to avoid blocking on database
-  // In production, pgStore can be enabled if needed
-  let sessionStore: any = undefined;
-
-  if (process.env.NODE_ENV === 'production' && process.env.DATABASE_URL) {
-    try {
-      const pgStore = connectPg(session);
-      sessionStore = new pgStore({
-        conString: process.env.DATABASE_URL,
-        createTableIfMissing: false,
-        ttl: 7 * 24 * 60 * 60, // 7 days in seconds
-        tableName: 'sessions',
-      });
-    } catch (err) {
-      console.warn('Failed to setup PG session store, using memory store:', err);
-    }
-  }
-
+  // Use in-memory session store to avoid blocking server startup on database connection
+  // In-memory sessions will be lost on server restart, which is acceptable for this use case
   app.use(session({
     secret: process.env.SESSION_SECRET || 'attendance-app-secret-key-change-in-production',
-    store: sessionStore, // undefined uses default in-memory store
     resave: false,
     saveUninitialized: false,
     cookie: {
