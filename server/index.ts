@@ -1,23 +1,24 @@
-// Load .env for development
+// Load .env only in development mode
 import { config as dotenvConfig } from 'dotenv';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const projectRoot = path.resolve(__dirname, '..');
+const isDev = process.env.NODE_ENV !== 'production';
 
-const dotenvResult = dotenvConfig({ path: path.join(projectRoot, '.env') });
-if (dotenvResult.parsed) {
-  // Override process.env with .env values to ensure development config is loaded
-  Object.assign(process.env, dotenvResult.parsed);
+if (isDev) {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const projectRoot = path.resolve(__dirname, '..');
+
+  const dotenvResult = dotenvConfig({ path: path.join(projectRoot, '.env') });
+  if (dotenvResult.parsed) {
+    // Override process.env with .env values to ensure development config is loaded
+    Object.assign(process.env, dotenvResult.parsed);
+  }
 }
 
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-
-// Development mode - use stubs, production mode will load real modules dynamically
-const isDev = process.env.NODE_ENV === 'development';
 
 // Stubs for development
 const log = isDev ? console.log : (msg: string) => {};
