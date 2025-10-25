@@ -5,6 +5,7 @@ server/public
 vite.config.ts.*
 *.tar.gz
 
-# Logs
-logs/
-*.log
+# Environment variables (contains secrets)
+.env
+.env.local
+.env.*.local

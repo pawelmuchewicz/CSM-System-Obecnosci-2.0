@@ -87,6 +87,13 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <img
+              src="/login-logo.png"
+              alt="Creative Dance Logo"
+              className="h-20 w-20 object-contain"
+            />
+          </div>
           <CardTitle className="text-2xl font-bold">System Obecności CSM</CardTitle>
           <CardDescription>
             Zaloguj się aby uzyskać dostęp do systemu zarządzania obecnością
@@ -133,9 +140,9 @@ export function LoginPage() {
               </div>
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full" 
+            <Button
+              type="submit"
+              className="w-full"
               disabled={loginMutation.isPending}
               data-testid="button-login"
             >
@@ -143,7 +150,15 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-4 text-center">
+            <Link href="/forgot-password">
+              <Button variant="link" size="sm" className="text-sm">
+                Zapomniałem hasła
+              </Button>
+            </Link>
+          </div>
+
+          <div className="mt-2 text-center">
             <Link href="/register">
               <Button variant="ghost" size="sm" data-testid="link-register">
                 <UserPlus className="w-4 h-4 mr-2" />

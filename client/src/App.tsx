@@ -8,8 +8,11 @@ import { LoadingSpinner } from "@/components/loading-spinner";
 import AttendancePage from "@/pages/attendance";
 import { ReportsPage } from "@/pages/reports";
 import { LoginPage } from "@/pages/login";
+import { ForgotPasswordPage } from "@/pages/forgot-password";
+import { ResetPasswordPage } from "@/pages/reset-password";
 import AdminPage from "@/pages/admin";
 import ProfilePage from "@/pages/profile";
+import NotificationsPage from "@/pages/notifications";
 import RegisterPage from "@/pages/register";
 import NotFound from "@/pages/not-found";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,6 +31,8 @@ function Router() {
       <Switch>
         <Route path="/login" component={LoginPage} />
         <Route path="/register" component={RegisterPage} />
+        <Route path="/forgot-password" component={ForgotPasswordPage} />
+        <Route path="/reset-password" component={ResetPasswordPage} />
         <Route component={LoginPage} />
       </Switch>
     );
@@ -42,6 +47,7 @@ function Router() {
         <Route path="/reports" component={ReportsPage} />
         <Route path="/admin" component={AdminPage} />
         <Route path="/profile" component={ProfilePage} />
+        <Route path="/notifications" component={NotificationsPage} />
         <Route component={NotFound} />
       </Switch>
     </div>

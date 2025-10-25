@@ -193,6 +193,29 @@ export const instructorGroupAssignments = pgTable("instructor_group_assignments"
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Password reset tokens table
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => instructorsAuth.id, { onDelete: "cascade" }),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Notifications table
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  recipientId: integer("recipient_id").notNull().references(() => instructorsAuth.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 50 }).notNull(), // 'student_added' | 'student_approved' | 'student_expelled' | 'attendance_note' | 'system'
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  metadata: jsonb("metadata"), // Additional data: { studentId, groupId, studentName, groupName, etc. }
+  read: boolean("read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdBy: integer("created_by").references(() => instructorsAuth.id), // Who triggered this notification
+});
+
 // Relations
 export const instructorsAuthRelations = relations(instructorsAuth, ({ many, one }) => ({
   groupAssignments: many(instructorGroupAssignments),
@@ -226,6 +249,17 @@ export const groupsConfigRelations = relations(groupsConfig, ({ one }) => ({
   }),
 }));
 
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  recipient: one(instructorsAuth, {
+    fields: [notifications.recipientId],
+    references: [instructorsAuth.id],
+  }),
+  creator: one(instructorsAuth, {
+    fields: [notifications.createdBy],
+    references: [instructorsAuth.id],
+  }),
+}));
+
 // Types for database tables
 export type InstructorAuth = typeof instructorsAuth.$inferSelect;
 export type InsertInstructorAuth = typeof instructorsAuth.$inferInsert;
@@ -233,6 +267,8 @@ export type InstructorGroupAssignment = typeof instructorGroupAssignments.$infer
 export type InsertInstructorGroupAssignment = typeof instructorGroupAssignments.$inferInsert;
 export type GroupConfig = typeof groupsConfig.$inferSelect;
 export type InsertGroupConfig = typeof groupsConfig.$inferInsert;
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;
 
 // Validation schemas
 export const loginSchema = z.object({
@@ -309,6 +345,16 @@ export const createGroupConfigSchema = createInsertSchema(groupsConfig, {
 
 export const updateGroupConfigSchema = createGroupConfigSchema.partial();
 
+// Password reset schemas
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Nieprawidłowy adres email"),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Token jest wymagany"),
+  newPassword: z.string().min(6, "Hasło musi mieć co najmniej 6 znaków"),
+});
+
 // Permission helper types
 export type UserRole = "owner" | "reception" | "instructor";
 export type UserStatus = "pending" | "active" | "inactive";
@@ -330,3 +376,35 @@ export type UpdateUserStatusRequest = z.infer<typeof updateUserStatusSchema>;
 export type AssignGroupRequest = z.infer<typeof assignGroupSchema>;
 export type CreateGroupConfigRequest = z.infer<typeof createGroupConfigSchema>;
 export type UpdateGroupConfigRequest = z.infer<typeof updateGroupConfigSchema>;
+export type ForgotPasswordRequest = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordRequest = z.infer<typeof resetPasswordSchema>;
+
+// Notification types
+export type NotificationType = 'student_added' | 'student_approved' | 'student_expelled' | 'attendance_note' | 'system';
+
+export interface NotificationMetadata {
+  studentId?: string;
+  studentName?: string;
+  groupId?: string;
+  groupName?: string;
+  date?: string;
+  notes?: string;
+  missingFields?: string[]; // e.g., ['email', 'phone']
+}
+
+// Notification schemas
+export const markNotificationReadSchema = z.object({
+  notificationId: z.number(),
+});
+
+export const deleteNotificationSchema = z.object({
+  notificationId: z.number(),
+});
+
+export const markAllReadSchema = z.object({
+  userId: z.number().optional(), // If not provided, use current user from session
+});
+
+export type MarkNotificationReadRequest = z.infer<typeof markNotificationReadSchema>;
+export type DeleteNotificationRequest = z.infer<typeof deleteNotificationSchema>;
+export type MarkAllReadRequest = z.infer<typeof markAllReadSchema>;

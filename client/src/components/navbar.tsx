@@ -1,9 +1,10 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { BarChart3, Calendar, LogOut, User, Menu, X, Settings, Users } from "lucide-react";
+import { BarChart3, Calendar, LogOut, User, Menu, X, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth, useLogout, usePermissions } from "@/hooks/useAuth";
 import { useState } from "react";
+import { NotificationBell } from "@/components/notification-bell";
 
 export function Navbar() {
   const [location] = useLocation();
@@ -83,6 +84,8 @@ export function Navbar() {
           <div className="hidden md:flex items-center space-x-2 flex-shrink-0">
             {user && (
               <>
+                <NotificationBell />
+
                 <Button
                   variant="ghost"
                   size="sm"
@@ -117,8 +120,9 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Mobile menu button */}
-          <div className="md:hidden">
+          {/* Mobile menu button and notification bell */}
+          <div className="md:hidden flex items-center space-x-2">
+            {user && <NotificationBell />}
             <Button
               variant="ghost"
               size="sm"
@@ -171,6 +175,7 @@ export function Navbar() {
                       {getRoleDisplayName(user.role)}
                     </span>
                   </div>
+
                   <Button
                     variant="outline"
                     size="sm"
