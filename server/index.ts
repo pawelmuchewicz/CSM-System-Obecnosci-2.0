@@ -1,6 +1,13 @@
-// Load .env manually for development
+// Load .env for development
 import { config as dotenvConfig } from 'dotenv';
-const dotenvResult = dotenvConfig({ path: '/Users/pawelmuchewicz14/Documents/ClaudeCode/CSM System Obecnosci /CSM-System-Obecnosci-2.0/.env' });
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const projectRoot = path.resolve(__dirname, '..');
+
+const dotenvResult = dotenvConfig({ path: path.join(projectRoot, '.env') });
 if (dotenvResult.parsed) {
   // Override process.env with .env values to ensure development config is loaded
   Object.assign(process.env, dotenvResult.parsed);
