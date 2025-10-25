@@ -42,6 +42,14 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { startMetricsLogging } from "./lib/metrics";
 
+// Log environment configuration for debugging
+console.log('📋 Server Initialization Starting...');
+console.log('  NODE_ENV:', process.env.NODE_ENV || 'not set');
+console.log('  PORT:', process.env.PORT || 'will use default');
+console.log('  DATABASE_URL:', process.env.DATABASE_URL ? '✅ set' : '❌ NOT SET');
+console.log('  SESSION_SECRET:', process.env.SESSION_SECRET ? '✅ set' : '❌ NOT SET');
+console.log('  GOOGLE credentials:', process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY ? '✅ set' : '❌ NOT SET');
+
 // Stubs for development
 const log = isDev ? console.log : (msg: string) => {};
 const logger = isDev ? { error: console.error, warn: console.warn, info: console.info } : { error: () => {}, warn: () => {}, info: () => {} };
@@ -87,6 +95,34 @@ app.use((req, res, next) => {
   });
 
   next();
+});
+
+// Health check endpoint for monitoring (must be before registerRoutes)
+app.get("/health", (req, res) => {
+  const healthStatus = {
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || "development",
+    database: process.env.DATABASE_URL ? "configured" : "NOT configured",
+    googleSheets: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY ? "configured" : "NOT configured",
+    session: process.env.SESSION_SECRET ? "configured" : "NOT configured",
+  };
+  res.status(200).json(healthStatus);
+});
+
+// API root endpoint
+app.get("/", (req, res) => {
+  res.status(200).json({
+    message: "CSM System Obecnosci API",
+    status: "ok",
+    version: "2.0",
+    endpoints: {
+      health: "/health",
+      api: "/api/*",
+      auth: "/api/auth/*"
+    }
+  });
 });
 
 (async () => {
