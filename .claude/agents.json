@@ -1,0 +1,108 @@
+{
+  "agents": [
+    {
+      "id": "frontend-developer",
+      "name": "Frontend Developer",
+      "enabled": true,
+      "description": "Expert in React, TypeScript, Vite, TailwindCSS, shadcn/ui optimization and best practices",
+      "context": "React 18, Vite, TypeScript, TailwindCSS, shadcn/ui components, Framer Motion animations, responsive design",
+      "trigger": [
+        "client/src/**/*.tsx",
+        "client/src/**/*.ts",
+        "vite.config.ts"
+      ],
+      "capabilities": [
+        "Component optimization",
+        "Performance tuning",
+        "TypeScript best practices",
+        "Styling with TailwindCSS",
+        "Bundle size optimization",
+        "Accessibility improvements"
+      ]
+    },
+    {
+      "id": "backend-developer",
+      "name": "Backend Developer",
+      "enabled": true,
+      "description": "Expert in Express.js, REST APIs, TypeScript, error handling, and security middleware",
+      "context": "Express.js, TypeScript, REST API design, error handling, middleware patterns, session management, rate limiting",
+      "trigger": [
+        "server/**/*.ts",
+        "shared/schema.ts"
+      ],
+      "capabilities": [
+        "API endpoint design",
+        "Middleware optimization",
+        "Error handling patterns",
+        "Route structure",
+        "Request/response validation",
+        "Security best practices"
+      ]
+    },
+    {
+      "id": "database-architect",
+      "name": "Database Architect",
+      "enabled": true,
+      "description": "Expert in PostgreSQL, Drizzle ORM, database schema design, migrations, and query optimization",
+      "context": "PostgreSQL, Drizzle ORM, schema design, migrations, indexes, query optimization, relational patterns",
+      "trigger": [
+        "shared/schema.ts",
+        "server/lib/**/*.ts",
+        "drizzle.config.ts"
+      ],
+      "capabilities": [
+        "Schema design",
+        "Migration planning",
+        "Query optimization",
+        "Index strategy",
+        "Relationship design",
+        "Performance tuning"
+      ]
+    },
+    {
+      "id": "security-auditor",
+      "name": "Security Auditor",
+      "enabled": true,
+      "description": "Expert in authentication, authorization, RBAC, credential handling, and security vulnerabilities",
+      "context": "Auth/AuthZ, RBAC (role-based access control), bcrypt hashing, JWT, session security, OWASP principles, credential management",
+      "trigger": [
+        "server/auth.ts",
+        "server/routes.ts",
+        "server/lib/sheets.ts"
+      ],
+      "capabilities": [
+        "Authentication review",
+        "Authorization verification",
+        "RBAC analysis",
+        "Credential security",
+        "Injection prevention",
+        "Security vulnerability detection"
+      ]
+    },
+    {
+      "id": "react-performance-optimizer",
+      "name": "React Performance Optimizer",
+      "enabled": true,
+      "description": "Expert in React rendering optimization, code splitting, lazy loading, and bundle size reduction",
+      "context": "React performance, memoization, lazy loading, code splitting, bundle analysis, rendering optimization",
+      "trigger": [
+        "client/src/pages/**/*.tsx",
+        "client/src/components/**/*.tsx"
+      ],
+      "capabilities": [
+        "Render optimization",
+        "Memoization strategy",
+        "Code splitting",
+        "Lazy loading",
+        "Bundle size analysis",
+        "Performance profiling"
+      ]
+    }
+  ],
+  "settings": {
+    "auto_activate": true,
+    "context_aware": true,
+    "multi_agent_analysis": true,
+    "auto_suggest": true
+  }
+}

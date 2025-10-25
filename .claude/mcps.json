@@ -1,0 +1,38 @@
+{
+  "mcps": [
+    {
+      "name": "github-mcp",
+      "enabled": true,
+      "description": "GitHub integration for repository management, PRs, issues, and deployments",
+      "config": {
+        "auth": "gh-cli",
+        "capabilities": [
+          "list-repos",
+          "create-pr",
+          "list-issues",
+          "manage-branches",
+          "view-actions"
+        ]
+      }
+    },
+    {
+      "name": "postgresql-mcp",
+      "enabled": true,
+      "description": "PostgreSQL direct access for database queries, migrations, and schema inspection",
+      "config": {
+        "connection": "DATABASE_URL",
+        "capabilities": [
+          "execute-queries",
+          "inspect-schema",
+          "run-migrations",
+          "analyze-performance",
+          "backup-restore"
+        ]
+      }
+    }
+  ],
+  "settings": {
+    "auto_connect": true,
+    "fallback_mode": "manual"
+  }
+}

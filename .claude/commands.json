@@ -1,0 +1,43 @@
+{
+  "commands": [
+    {
+      "name": "generate-tests",
+      "description": "Generate test files using Vitest for React components and backend endpoints",
+      "trigger": "/generate-tests",
+      "agent": "frontend-developer, backend-developer",
+      "example": "/generate-tests client/src/components/Button.tsx"
+    },
+    {
+      "name": "check-security",
+      "description": "Run security audit on authentication, authorization, and sensitive code",
+      "trigger": "/check-security",
+      "agent": "security-auditor",
+      "example": "/check-security server/auth.ts"
+    },
+    {
+      "name": "optimize-bundle",
+      "description": "Analyze and optimize Vite bundle size and React code splitting",
+      "trigger": "/optimize-bundle",
+      "agent": "react-performance-optimizer",
+      "example": "/optimize-bundle"
+    },
+    {
+      "name": "type-check",
+      "description": "Verify TypeScript types and Zod schema validation",
+      "trigger": "/type-check",
+      "agent": "frontend-developer, backend-developer",
+      "example": "/type-check"
+    },
+    {
+      "name": "review-schema",
+      "description": "Review database schema design, indexes, and query efficiency",
+      "trigger": "/review-schema",
+      "agent": "database-architect",
+      "example": "/review-schema shared/schema.ts"
+    }
+  ],
+  "settings": {
+    "auto_complete": true,
+    "suggest_relevant_commands": true
+  }
+}
