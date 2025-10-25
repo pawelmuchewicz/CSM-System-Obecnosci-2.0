@@ -10,8 +10,41 @@ import { parseGroupIds } from "./utils/parseGroupIds";
 import { logger } from "./lib/logger";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Test database connection on startup (with retry)
+  try {
+    console.log('Testing database connection...');
+    const testResult = await db.execute(sql`SELECT 1 as test`);
+    console.log('Database connection test successful:', testResult.rows);
+  } catch (error) {
+    console.error('Database connection test failed:', error);
+    console.error('Application will start but database operations may fail');
+    // Don't throw - allow app to start even if DB is temporarily unavailable
+  }
+
   // Setup session middleware
   setupSession(app);
+
+  // === HEALTH CHECK ENDPOINT ===
+  // This endpoint is used by Coolify and other monitoring tools to check if the server is running
+  app.get("/health", (req, res) => {
+    res.status(200).json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development',
+      database: process.env.DATABASE_URL ? 'configured' : 'NOT configured',
+      googleSheets: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY ? 'configured' : 'NOT configured'
+    });
+  });
+
+  // Root endpoint - also serves as health check
+  app.get("/", (req, res) => {
+    res.status(200).json({
+      message: "CSM System Obecnosci API",
+      status: "ok",
+      version: "2.0"
+    });
+  });
 
   // === AUTHENTICATION ROUTES ===
 

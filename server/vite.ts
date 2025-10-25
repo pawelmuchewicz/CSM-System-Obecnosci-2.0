@@ -73,16 +73,53 @@ export async function setupVite(app: Express, server: Server) {
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
 
+  console.log('serveStatic() called');
+  console.log('__dirname:', __dirname);
+  console.log('distPath:', distPath);
+  console.log('distPath exists?', fs.existsSync(distPath));
+
   if (!fs.existsSync(distPath)) {
-    throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
-    );
+    // Try alternative paths
+    const altPath1 = path.resolve(__dirname, "..", "dist", "public");
+    const altPath2 = path.resolve(process.cwd(), "dist", "public");
+
+    console.log('Trying alternative path 1:', altPath1, 'exists?', fs.existsSync(altPath1));
+    console.log('Trying alternative path 2:', altPath2, 'exists?', fs.existsSync(altPath2));
+
+    if (fs.existsSync(altPath1)) {
+      console.log('Using alternative path 1:', altPath1);
+      app.use(express.static(altPath1));
+      app.use("*", (_req, res) => {
+        res.sendFile(path.resolve(altPath1, "index.html"));
+      });
+      return;
+    } else if (fs.existsSync(altPath2)) {
+      console.log('Using alternative path 2:', altPath2);
+      app.use(express.static(altPath2));
+      app.use("*", (_req, res) => {
+        res.sendFile(path.resolve(altPath2, "index.html"));
+      });
+      return;
+    }
+
+    // If no paths work, log warning but don't throw
+    console.warn(`WARNING: Could not find the build directory: ${distPath}`);
+    console.warn('Static files will not be served. API routes will still work.');
+    console.warn('Make sure to run "npm run build" before starting the production server.');
+    return; // Don't throw, just return - API will still work
   }
 
+  console.log('Serving static files from:', distPath);
   app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+    const indexPath = path.resolve(distPath, "index.html");
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      console.error('index.html not found at:', indexPath);
+      res.status(404).send('Application not built. Please run "npm run build".');
+    }
   });
 }

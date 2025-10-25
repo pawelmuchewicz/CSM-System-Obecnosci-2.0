@@ -5,15 +5,18 @@ import { instructorsAuth, groupsConfig } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { logger } from './logger';
 
-// Validate required environment variables
-if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
-  throw new Error('Missing GOOGLE_SERVICE_ACCOUNT_EMAIL environment variable');
-}
-if (!process.env.GOOGLE_PRIVATE_KEY) {
-  throw new Error('Missing GOOGLE_PRIVATE_KEY environment variable');
-}
-if (!process.env.GOOGLE_SHEETS_SPREADSHEET_ID) {
-  throw new Error('Missing GOOGLE_SHEETS_SPREADSHEET_ID environment variable');
+// Lazy validation - check credentials only when needed (not at module load)
+// This prevents crashes during server startup if env vars are missing
+function validateGoogleCredentials() {
+  if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
+    throw new Error('Missing GOOGLE_SERVICE_ACCOUNT_EMAIL environment variable');
+  }
+  if (!process.env.GOOGLE_PRIVATE_KEY) {
+    throw new Error('Missing GOOGLE_PRIVATE_KEY environment variable');
+  }
+  if (!process.env.GOOGLE_SHEETS_SPREADSHEET_ID) {
+    throw new Error('Missing GOOGLE_SHEETS_SPREADSHEET_ID environment variable');
+  }
 }
 
 // Users spreadsheet configuration
@@ -203,12 +206,11 @@ async function getSpreadsheetId(groupId: string): Promise<string> {
  */
 export async function getSheets() {
   try {
-    const serviceEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-    const privateKeyRaw = process.env.GOOGLE_PRIVATE_KEY;
-    
-    if (!serviceEmail || !privateKeyRaw) {
-      throw new Error('Missing Google service account credentials');
-    }
+    // Validate credentials on first use, not at module load
+    validateGoogleCredentials();
+
+    const serviceEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL!;
+    const privateKeyRaw = process.env.GOOGLE_PRIVATE_KEY!;
     
     // More robust private key processing
     let privateKey = privateKeyRaw

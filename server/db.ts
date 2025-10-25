@@ -10,23 +10,56 @@ neonConfig.fetchConnectionCache = true;
 let pool: Pool | null = null;
 let dbInstance: any = null;
 
-function initializeDatabase() {
+/**
+ * Initialize database connection with retry logic
+ * @param retries - Number of retry attempts (default: 0, no retries)
+ * @param delayMs - Delay between retries in milliseconds (default: 1000)
+ */
+async function initializeDatabase(retries: number = 0, delayMs: number = 1000) {
   if (dbInstance) return dbInstance;
 
   if (!process.env.DATABASE_URL) {
-    throw new Error(
+    const error = new Error(
       "DATABASE_URL must be set. Did you forget to provision a database?",
     );
+    console.error('Database initialization failed:', error.message);
+    throw error;
   }
 
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    connectionTimeoutMillis: 5000,
-    idleTimeoutMillis: 30000,
-    max: 20
-  });
-  dbInstance = drizzle({ client: pool, schema });
-  return dbInstance;
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      console.log(`Initializing database connection (attempt ${attempt + 1}/${retries + 1})...`);
+
+      pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        connectionTimeoutMillis: 10000, // Increased to 10s for production
+        idleTimeoutMillis: 30000,
+        max: 20
+      });
+
+      dbInstance = drizzle({ client: pool, schema });
+
+      // Test the connection
+      await pool.query('SELECT 1');
+      console.log('Database connection established successfully');
+
+      return dbInstance;
+    } catch (error) {
+      lastError = error as Error;
+      console.error(`Database connection attempt ${attempt + 1} failed:`, error instanceof Error ? error.message : error);
+
+      if (attempt < retries) {
+        console.log(`Retrying in ${delayMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+
+  // All retries failed
+  console.error('All database connection attempts failed');
+  throw lastError || new Error('Failed to connect to database');
 }
 
 export function getDb() {

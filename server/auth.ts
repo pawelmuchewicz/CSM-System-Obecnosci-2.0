@@ -17,6 +17,11 @@ import { eq } from 'drizzle-orm';
  * @param app - Express application instance
  */
 export function setupSession(app: Express) {
+  // Check if SESSION_SECRET is set
+  if (!process.env.SESSION_SECRET) {
+    console.warn('WARNING: SESSION_SECRET not set. Using default (insecure for production)');
+  }
+
   // Use in-memory session store to avoid blocking server startup on database connection
   // In-memory sessions will be lost on server restart, which is acceptable for this use case
   app.use(session({
@@ -29,6 +34,8 @@ export function setupSession(app: Express) {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
     },
   }));
+
+  console.log('Session middleware configured successfully');
 }
 
 /**
