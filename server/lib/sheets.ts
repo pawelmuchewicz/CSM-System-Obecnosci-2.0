@@ -768,24 +768,25 @@ export async function getAttendance(groupId: string, dateISO: string): Promise<{
     const sheets = await getSheets();
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Attendance!A1:I10000' // Include all columns A-I
+      range: 'Attendance!A1:J10000' // Include all columns A-J (J=submitted flag)
     });
 
     const rows = response.data.values || [];
-    const attendanceMap = new Map<string, { status: string; updated_at: string; notes?: string }>();
+    const attendanceMap = new Map<string, { status: string; updated_at: string; notes?: string; submitted: boolean }>();
 
     // Process attendance records for this session
-    // Structure: A=session_id, B=student_id, C=status, D=note, E=updated_at, F=student_name, G=class, H=phone, I=group_name
+    // Structure: A=session_id, B=student_id, C=status, D=note, E=updated_at, F=student_name, G=class, H=phone, I=group_name, J=submitted
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
       if (row[0] === sessionId && row[1]) {
         const studentId = row[1];
         const status = row[2] || 'nieobecny';    // Column C: status (po polsku)
-        
+        const submitted = row[9] === 'true' || row[9] === true; // Column J: submitted flag
+
         // Check if column D contains a timestamp (old format) or actual notes
         let notes = '';
         let updatedAt = '';
-        
+
         if (row[3] && row[3].includes('T') && row[3].includes('Z')) {
           // Old format: timestamp in column D
           notes = '';
@@ -795,10 +796,10 @@ export async function getAttendance(groupId: string, dateISO: string): Promise<{
           notes = row[3] || '';
           updatedAt = row[4] || new Date().toISOString();
         }
-        
+
         // Keep only the latest record for each student
         if (!attendanceMap.has(studentId) || updatedAt > (attendanceMap.get(studentId)?.updated_at || '')) {
-          attendanceMap.set(studentId, { status, updated_at: updatedAt, notes });
+          attendanceMap.set(studentId, { status, updated_at: updatedAt, notes, submitted });
         }
       }
     }
@@ -810,7 +811,8 @@ export async function getAttendance(groupId: string, dateISO: string): Promise<{
         student_id: student.id,
         status: attendance?.status === 'obecny' ? 'obecny' : 'nieobecny', // Status już po polsku
         updated_at: attendance?.updated_at,
-        notes: attendance?.notes || ''
+        notes: attendance?.notes || '',
+        submitted: attendance?.submitted || false // Include submitted flag
       };
     });
 
@@ -891,12 +893,12 @@ export async function setAttendance(
     // Get all attendance data to find existing rows
     const attendanceResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Attendance!A:I'
+      range: 'Attendance!A:J' // Include J column for submitted flag
     });
-    
+
     const allRows = attendanceResponse.data.values || [];
     const existingRowsMap = new Map<string, number>(); // student_id -> row index
-    
+
     // Find existing rows for this session
     for (let i = 1; i < allRows.length; i++) {
       const row = allRows[i];
@@ -905,10 +907,10 @@ export async function setAttendance(
         existingRowsMap.set(studentId, i + 1); // +1 because sheets are 1-indexed
       }
     }
-    
+
     const updateOperations = [];
     const newRows = [];
-    
+
     for (const item of validUpdates) {
       const student = studentsMap.get(item.student_id);
       const rowData = [
@@ -920,15 +922,16 @@ export async function setAttendance(
         student?.first_name || '',                   // F: student_name
         student?.class || '',                        // G: class
         student?.phone || '',                        // H: phone
-        groupName                                    // I: group_name
+        groupName,                                   // I: group_name
+        'true'                                       // J: submitted - mark as submitted
       ];
-      
+
       const existingRowIndex = existingRowsMap.get(item.student_id);
-      
+
       if (existingRowIndex) {
         // Update existing row
         updateOperations.push({
-          range: `Attendance!A${existingRowIndex}:I${existingRowIndex}`,
+          range: `Attendance!A${existingRowIndex}:J${existingRowIndex}`, // Include J column
           values: [rowData]
         });
       } else {
@@ -936,7 +939,7 @@ export async function setAttendance(
         newRows.push(rowData);
       }
     }
-    
+
     // Perform updates for existing rows
     if (updateOperations.length > 0) {
       await sheets.spreadsheets.values.batchUpdate({
@@ -947,12 +950,12 @@ export async function setAttendance(
         }
       });
     }
-    
+
     // Append new rows
     if (newRows.length > 0) {
       await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: 'Attendance!A:I',
+        range: 'Attendance!A:J', // Include J column
         valueInputOption: 'RAW',
         requestBody: {
           values: newRows
@@ -1334,11 +1337,17 @@ export async function getAttendanceReport(filters: AttendanceReportFilters): Pro
       
       for (const session of sessions) {
         const attendance = await getAttendance(group.id, session.date);
-        
+
         for (const student of filteredStudents) {
           const attendanceItem = attendance.items.find(item => item.student_id === student.id);
           const status = attendanceItem?.status || 'nieobecny';
-          
+
+          // ONLY include submitted records in reports
+          // Skip records that haven't been explicitly submitted (submitted flag is not true)
+          if (!attendanceItem?.submitted) {
+            continue;
+          }
+
           // Apply status filter
           if (filters.status && filters.status !== 'all' && status !== filters.status) {
             continue;
