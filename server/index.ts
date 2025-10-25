@@ -97,20 +97,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check endpoint for monitoring (before registerRoutes is ok)
-app.get("/health", (req, res) => {
-  const healthStatus = {
-    status: "ok",
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV || "development",
-    database: process.env.DATABASE_URL ? "configured" : "NOT configured",
-    googleSheets: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY ? "configured" : "NOT configured",
-    session: process.env.SESSION_SECRET ? "configured" : "NOT configured",
-  };
-  res.status(200).json(healthStatus);
-});
-
 (async () => {
   try {
     console.log('Starting server initialization...');
@@ -123,17 +109,6 @@ app.get("/health", (req, res) => {
 
     const server = await registerRoutes(app);
     console.log('Routes registered successfully');
-
-    // Sentry error handler (must be before other error handlers)
-    app.use(sentryErrorHandler);
-
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-
-      logger.error('Express error handler', { error: err.message, status, stack: err.stack });
-      res.status(status).json({ message });
-    });
 
     // importantly only setup vite in development and after
     // setting up all the other routes so the catch-all route
@@ -161,6 +136,18 @@ app.get("/health", (req, res) => {
       }
     }
 
+    // Sentry error handler (must be before other error handlers but AFTER serveStatic)
+    app.use(sentryErrorHandler);
+
+    // General error handler - MUST be after all routes and middleware
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+
+      logger.error('Express error handler', { error: err.message, status, stack: err.stack });
+      res.status(status).json({ message });
+    });
+
     // ALWAYS serve the app on the port specified in the environment variable PORT
     // Other ports are firewalled. Default to 5000 if not specified.
     // this serves both the API and the client.
@@ -184,20 +171,6 @@ app.get("/health", (req, res) => {
       if (process.env.NODE_ENV === 'production') {
         startMetricsLogging(15);
       }
-    });
-
-    // API root endpoint (catch-all, must be last)
-    app.get("/", (req, res) => {
-      res.status(200).json({
-        message: "CSM System Obecnosci API",
-        status: "ok",
-        version: "2.0",
-        endpoints: {
-          health: "/health",
-          api: "/api/*",
-          auth: "/api/auth/*"
-        }
-      });
     });
 
     // Handle server errors

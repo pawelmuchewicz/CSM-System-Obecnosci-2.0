@@ -37,14 +37,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Root endpoint - also serves as health check
-  app.get("/", (req, res) => {
-    res.status(200).json({
-      message: "CSM System Obecnosci API",
-      status: "ok",
-      version: "2.0"
-    });
-  });
+  // NOTE: No GET / endpoint here - let serveStatic() handle it with index.html
+  // In production, / should serve the frontend app, not JSON
 
   // === AUTHENTICATION ROUTES ===
 
