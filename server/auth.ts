@@ -12,21 +12,33 @@ import { eq } from 'drizzle-orm';
  * Sets up session middleware with persistent PostgreSQL storage.
  * Sessions expire after 7 days of inactivity.
  *
+ * In development, uses in-memory session store to avoid blocking server startup
+ * on database connection delays.
+ *
  * @param app - Express application instance
  */
 export function setupSession(app: Express) {
-  const pgStore = connectPg(session);
-  
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
-    ttl: 7 * 24 * 60 * 60, // 7 days in seconds
-    tableName: 'sessions',
-  });
+  // Use memory store for development to avoid blocking on database
+  // In production, pgStore can be enabled if needed
+  let sessionStore: any = undefined;
+
+  if (process.env.NODE_ENV === 'production' && process.env.DATABASE_URL) {
+    try {
+      const pgStore = connectPg(session);
+      sessionStore = new pgStore({
+        conString: process.env.DATABASE_URL,
+        createTableIfMissing: false,
+        ttl: 7 * 24 * 60 * 60, // 7 days in seconds
+        tableName: 'sessions',
+      });
+    } catch (err) {
+      console.warn('Failed to setup PG session store, using memory store:', err);
+    }
+  }
 
   app.use(session({
     secret: process.env.SESSION_SECRET || 'attendance-app-secret-key-change-in-production',
-    store: sessionStore,
+    store: sessionStore, // undefined uses default in-memory store
     resave: false,
     saveUninitialized: false,
     cookie: {

@@ -49,13 +49,13 @@ export function Toolbar({
           <Label htmlFor="group-select" className="block text-sm font-medium text-gray-700 mb-1">
             Grupa
           </Label>
-          <Select 
-            value={selectedGroup} 
+          <Select
+            value={selectedGroup || undefined}
             onValueChange={onGroupChange}
             data-testid="select-group"
           >
             <SelectTrigger className="w-full shadow-sm border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" id="group-select">
-              <SelectValue placeholder="Wybierz grupę..." />
+              <SelectValue placeholder="Wybierz grupę" />
             </SelectTrigger>
             <SelectContent>
               {groups.map((group) => (

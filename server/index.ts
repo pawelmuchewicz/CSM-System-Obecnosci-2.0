@@ -52,6 +52,7 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
+
   // Sentry error handler (must be before other error handlers)
   app.use(sentryErrorHandler);
 

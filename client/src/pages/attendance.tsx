@@ -113,12 +113,7 @@ export default function AttendancePage() {
     }
   }, [attendanceData]);
 
-  // Set first group as default when groups load
-  useEffect(() => {
-    if (groupsData?.groups && groupsData.groups.length > 0 && !selectedGroup) {
-      setSelectedGroup(groupsData.groups[0].id);
-    }
-  }, [groupsData, selectedGroup]);
+  // Removed automatic group selection - user must explicitly choose a group
 
   const handleGroupChange = (groupId: string) => {
     setSelectedGroup(groupId);
