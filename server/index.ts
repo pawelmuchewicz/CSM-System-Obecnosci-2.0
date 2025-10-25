@@ -97,7 +97,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check endpoint for monitoring (must be before registerRoutes)
+// Health check endpoint for monitoring (before registerRoutes is ok)
 app.get("/health", (req, res) => {
   const healthStatus = {
     status: "ok",
@@ -109,20 +109,6 @@ app.get("/health", (req, res) => {
     session: process.env.SESSION_SECRET ? "configured" : "NOT configured",
   };
   res.status(200).json(healthStatus);
-});
-
-// API root endpoint
-app.get("/", (req, res) => {
-  res.status(200).json({
-    message: "CSM System Obecnosci API",
-    status: "ok",
-    version: "2.0",
-    endpoints: {
-      health: "/health",
-      api: "/api/*",
-      auth: "/api/auth/*"
-    }
-  });
 });
 
 (async () => {
@@ -198,6 +184,20 @@ app.get("/", (req, res) => {
       if (process.env.NODE_ENV === 'production') {
         startMetricsLogging(15);
       }
+    });
+
+    // API root endpoint (catch-all, must be last)
+    app.get("/", (req, res) => {
+      res.status(200).json({
+        message: "CSM System Obecnosci API",
+        status: "ok",
+        version: "2.0",
+        endpoints: {
+          health: "/health",
+          api: "/api/*",
+          auth: "/api/auth/*"
+        }
+      });
     });
 
     // Handle server errors
