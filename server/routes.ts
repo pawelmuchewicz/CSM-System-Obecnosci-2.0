@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { getGroups, getStudents, getAttendance, setAttendance, getInstructorGroups, getInstructorsForGroup, addInstructorGroupAssignment, getAttendanceReport, clearCache, addStudent, approveStudent, expelStudent } from "./lib/sheets";
 import { sql } from "drizzle-orm";
-import { attendanceRequestSchema, loginSchema, instructorsAuth, instructorGroupAssignments, registerInstructorSchema, updateUserStatusSchema, approveUserSchema, assignGroupSchema, groupsConfig, createGroupConfigSchema, updateGroupConfigSchema, addStudentSchema, approveStudentSchema, expelStudentSchema } from "@shared/schema";
+import { attendanceRequestSchema, loginSchema, instructorsAuth, instructorGroupAssignments, registerInstructorSchema, updateUserStatusSchema, approveUserSchema, assignGroupSchema, groupsConfig, createGroupConfigSchema, updateGroupConfigSchema, addStudentSchema, approveStudentSchema, expelStudentSchema, type AttendanceReportResponse } from "@shared/schema";
 import { setupSession, requireAuth, optionalAuth, requireGroupAccess, hashPassword, verifyPassword, type AuthenticatedRequest } from "./auth";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -454,29 +454,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/attendance/notes - Save notes for specific student
-  app.post("/api/attendance/notes", async (req, res) => {
+  app.post("/api/attendance/notes", requireAuth, requireGroupAccess, async (req, res) => {
     try {
       const { groupId, date, student_id, notes } = req.body;
-      
+
       if (!groupId || !date || !student_id) {
-        return res.status(400).json({ 
-          message: "Missing required fields: groupId, date, student_id" 
+        return res.status(400).json({
+          message: "Missing required fields: groupId, date, student_id"
+        });
+      }
+
+      // Verify user has access to this group
+      const session = req.session as any;
+      if (!session.user.groupIds.includes(groupId)) {
+        return res.status(403).json({
+          message: "You don't have access to this group"
         });
       }
 
       // Get current attendance to preserve status
       const currentAttendance = await getAttendance(groupId, date);
       const existingItem = currentAttendance.items.find(item => item.student_id === student_id);
-      
+
       // IMPORTANT: Only add notes if student already has some attendance status
       // Don't create attendance record just for notes!
       if (!existingItem || !existingItem.status) {
-        return res.status(400).json({ 
-          message: "Nie można dodać notatki do studenta który nie ma ustalonej obecności. Najpierw oznacz obecność (obecny/nieobecny).", 
+        return res.status(400).json({
+          message: "Nie można dodać notatki do studenta który nie ma ustalonej obecności. Najpierw oznacz obecność (obecny/nieobecny).",
           code: "NO_ATTENDANCE_STATUS"
         });
       }
-      
+
       // Create updated item with notes (preserve existing status)
       const updatedItem = {
         student_id,
@@ -490,7 +498,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, item: updatedItem });
     } catch (error) {
       logger.error("Error saving notes:", error);
-      res.status(502).json({ 
+      res.status(502).json({
         message: "Failed to save notes to Google Sheets",
         hint: "Ensure the sheet is shared with the service account as Editor"
       });
@@ -598,19 +606,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: req.query.status as 'obecny' | 'nieobecny' | 'all' | undefined
       };
 
-      const report = await getAttendanceReport(filters);
+      // Validate request limits to prevent excessive API calls
+      if (filters.groupIds && filters.groupIds.length > 5) {
+        return res.status(400).json({
+          message: "Too many groups selected",
+          hint: "Maximum 5 groups per report"
+        });
+      }
+
+      if (filters.studentIds && filters.studentIds.length > 100) {
+        return res.status(400).json({
+          message: "Too many students selected",
+          hint: "Maximum 100 students per report"
+        });
+      }
+
+      // Add 45-second timeout for report generation
+      const reportPromise = getAttendanceReport(filters);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Report generation timeout - please try with fewer groups or shorter date range')), 45000)
+      );
+
+      const report = await Promise.race([reportPromise, timeoutPromise]);
       res.json(report);
     } catch (error) {
       logger.error("Error generating attendance report:", error);
-      res.status(502).json({ 
+      res.status(502).json({
         message: "Failed to generate attendance report",
-        hint: "Ensure the sheets are accessible and contain valid data"
+        hint: error instanceof Error ? error.message : "Ensure the sheets are accessible and contain valid data"
       });
     }
   });
 
   // GET /api/export/csv
-  app.get("/api/export/csv", async (req, res) => {
+  app.get("/api/export/csv", requireAuth, async (req, res) => {
     try {
       const filters = {
         groupIds: req.query.groupIds ? (req.query.groupIds as string).split(',') : undefined,
@@ -620,8 +649,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: req.query.status as 'obecny' | 'nieobecny' | 'all' | undefined
       };
 
-      const report = await getAttendanceReport(filters);
-      
+      // Validate request limits to prevent excessive API calls
+      if (filters.groupIds && filters.groupIds.length > 5) {
+        return res.status(400).json({
+          message: "Too many groups selected",
+          hint: "Maximum 5 groups per report"
+        });
+      }
+
+      if (filters.studentIds && filters.studentIds.length > 100) {
+        return res.status(400).json({
+          message: "Too many students selected",
+          hint: "Maximum 100 students per report"
+        });
+      }
+
+      // Add 45-second timeout for report generation
+      const reportPromise = getAttendanceReport(filters);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Report generation timeout - please try with fewer groups or shorter date range')), 45000)
+      );
+
+      const report = await Promise.race([reportPromise, timeoutPromise]) as AttendanceReportResponse;
+
       // Generate CSV content
       const csvHeaders = ['Student', 'Grupa', 'Data', 'Status', 'Notatki'];
       const csvRows = report.items.map(item => [

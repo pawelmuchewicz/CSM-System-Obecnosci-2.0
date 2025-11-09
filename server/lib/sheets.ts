@@ -1440,31 +1440,48 @@ export async function getAttendanceReport(filters: AttendanceReportFilters): Pro
 
 async function getGroupSessions(groupId: string, dateFrom?: string, dateTo?: string): Promise<{date: string}[]> {
   try {
-    const sheets = await getSheets();
-    const spreadsheetId = await getSpreadsheetId(groupId);
+    // Check cache first (with same TTL as attendance: 5 minutes)
+    const cacheKey = getCacheKey('sessions', groupId);
+    const cachedSessions = getFromCache<{date: string}[]>(cacheKey, ATTENDANCE_CACHE_DURATION);
 
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: 'Sessions!A1:C1000'
-    });
+    let sessions: {date: string}[] = [];
 
-    const rows = response.data.values || [];
-    const sessions: {date: string}[] = [];
-    
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i];
-      if (row && row[1] === groupId && row[2]) {
-        const date = row[2];
-        
-        // Apply date filters
-        if (dateFrom && date < dateFrom) continue;
-        if (dateTo && date > dateTo) continue;
-        
-        sessions.push({ date });
+    if (cachedSessions) {
+      sessions = cachedSessions;
+    } else {
+      const sheets = await getSheets();
+      const spreadsheetId = await getSpreadsheetId(groupId);
+
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: 'Sessions!A1:C1000'
+      });
+
+      const rows = response.data.values || [];
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (row && row[1] === groupId && row[2]) {
+          const date = row[2];
+          sessions.push({ date });
+        }
       }
+
+      sessions.sort((a, b) => a.date.localeCompare(b.date));
+      // Cache the full session list
+      setCache(cacheKey, sessions);
     }
 
-    return sessions.sort((a, b) => a.date.localeCompare(b.date));
+    // Apply date filters to cached/fresh data
+    if (dateFrom || dateTo) {
+      return sessions.filter(session => {
+        if (dateFrom && session.date < dateFrom) return false;
+        if (dateTo && session.date > dateTo) return false;
+        return true;
+      });
+    }
+
+    return sessions;
   } catch (error) {
     logger.error(`Error fetching sessions for group ${groupId}:`, error);
     return [];
