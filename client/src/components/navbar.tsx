@@ -1,8 +1,9 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { BarChart3, Calendar, LogOut, User, Menu, X, Settings } from "lucide-react";
+import { BarChart3, Calendar, LogOut, User, Menu, X, Settings, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth, useLogout, usePermissions } from "@/hooks/useAuth";
+import { useThemeToggle } from "@/hooks/use-theme";
 import { useState } from "react";
 import { NotificationBell } from "@/components/notification-bell";
 
@@ -11,6 +12,7 @@ export function Navbar() {
   const { user } = useAuth();
   const permissions = usePermissions();
   const logoutMutation = useLogout();
+  const { isDark, toggleTheme, mounted } = useThemeToggle();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Role display mapping
@@ -82,6 +84,23 @@ export function Navbar() {
 
           {/* Desktop User Menu */}
           <div className="hidden md:flex items-center space-x-2 flex-shrink-0">
+            {/* Theme Toggle */}
+            {mounted && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                data-testid="button-theme-toggle"
+                title={isDark ? "Włącz tryb jasny" : "Włącz tryb ciemny"}
+              >
+                {isDark ? (
+                  <Sun className="w-4 h-4" />
+                ) : (
+                  <Moon className="w-4 h-4" />
+                )}
+              </Button>
+            )}
+
             {user && (
               <>
                 <NotificationBell />
@@ -96,7 +115,7 @@ export function Navbar() {
                   <User className="w-4 h-4 mr-2 flex-shrink-0" />
                   <span className="hidden lg:inline">Profil</span>
                 </Button>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -123,9 +142,24 @@ export function Navbar() {
           {/* Mobile menu button and notification bell */}
           <div className="md:hidden flex items-center space-x-2">
             {user && <NotificationBell />}
+            {mounted && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                data-testid="button-mobile-theme-toggle"
+                title={isDark ? "Włącz tryb jasny" : "Włącz tryb ciemny"}
+              >
+                {isDark ? (
+                  <Sun className="w-4 h-4" />
+                ) : (
+                  <Moon className="w-4 h-4" />
+                )}
+              </Button>
+            )}
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={toggleMobileMenu}
               data-testid="button-mobile-menu"
             >
