@@ -51,11 +51,11 @@ export function ReportsPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Raporty obecności</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Raporty obecności</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Analizuj obecność studentów i generuj raporty
           </p>
         </div>
