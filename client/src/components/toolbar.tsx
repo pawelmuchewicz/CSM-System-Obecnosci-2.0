@@ -41,12 +41,12 @@ export function Toolbar({
   onAddStudent
 }: ToolbarProps) {
   return (
-    <div className="bg-white rounded-lg shadow-md border border-gray-200 p-3 sm:p-4 mb-6">
+    <div className="bg-card rounded-lg shadow-md border border-border p-3 sm:p-4 mb-6">
       {/* Pierwszy rząd - główne kontrolki */}
       <div className="flex flex-col sm:flex-row sm:items-end space-y-3 sm:space-y-0 sm:space-x-4 mb-4">
         {/* Group Selector */}
         <div className="flex-1 min-w-0">
-          <Label htmlFor="group-select" className="block text-sm font-medium text-gray-700 mb-1">
+          <Label htmlFor="group-select" className="block text-sm font-medium text-foreground mb-1">
             Grupa
           </Label>
           <Select
@@ -54,7 +54,7 @@ export function Toolbar({
             onValueChange={onGroupChange}
             data-testid="select-group"
           >
-            <SelectTrigger className="w-full shadow-sm border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" id="group-select">
+            <SelectTrigger className="w-full shadow-sm" id="group-select">
               <SelectValue placeholder="Wybierz grupę" />
             </SelectTrigger>
             <SelectContent>
@@ -69,7 +69,7 @@ export function Toolbar({
 
         {/* Date Picker */}
         <div className="flex-1 min-w-0">
-          <Label htmlFor="date-picker" className="block text-sm font-medium text-gray-700 mb-1">
+          <Label htmlFor="date-picker" className="block text-sm font-medium text-foreground mb-1">
             Data
           </Label>
           <Input
@@ -77,7 +77,7 @@ export function Toolbar({
             id="date-picker"
             value={selectedDate}
             onChange={(e) => onDateChange(e.target.value)}
-            className="w-full shadow-sm border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full shadow-sm"
             data-testid="input-date"
           />
         </div>
@@ -87,25 +87,25 @@ export function Toolbar({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0 gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
           {/* Student Count */}
-          <div className="flex items-center text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md shadow-sm border border-gray-200">
+          <div className="flex items-center text-sm text-muted-foreground bg-muted px-3 py-2 rounded-md shadow-sm border border-border">
             <Users className="w-4 h-4 mr-1 flex-shrink-0" />
             <span data-testid="text-student-count">{studentCount}</span> uczniów
           </div>
 
           {/* Show Inactive Toggle */}
-          <div className="flex items-center space-x-2 bg-blue-50 px-3 py-2 rounded-md shadow-sm border-2 border-blue-200">
+          <div className="flex items-center space-x-2 bg-blue-50 dark:bg-blue-950 px-3 py-2 rounded-md shadow-sm border-2 border-blue-200 dark:border-blue-800">
             {showInactive ? (
-              <Eye className="w-4 h-4 text-blue-700 flex-shrink-0" />
+              <Eye className="w-4 h-4 text-blue-700 dark:text-blue-300 flex-shrink-0" />
             ) : (
-              <EyeOff className="w-4 h-4 text-blue-700 flex-shrink-0" />
+              <EyeOff className="w-4 h-4 text-blue-700 dark:text-blue-300 flex-shrink-0" />
             )}
             <Switch
               checked={showInactive}
               onCheckedChange={onShowInactiveChange}
               data-testid="switch-show-inactive"
-              className="data-[state=checked]:bg-blue-600"
+              className="data-[state=checked]:bg-blue-600 dark:data-[state=checked]:bg-blue-500"
             />
-            <span className="text-sm font-medium text-blue-700 whitespace-nowrap">
+            <span className="text-sm font-medium text-blue-700 dark:text-blue-300 whitespace-nowrap">
               {showInactive ? 'Ukryj nieaktywnych' : 'Pokaż nieaktywnych'}
             </span>
           </div>
@@ -120,7 +120,7 @@ export function Toolbar({
               variant="outline"
               onClick={onAddStudent}
               disabled={!selectedGroup}
-              className="w-full sm:w-auto text-sm border-2 border-green-500 text-green-700 hover:bg-green-50 hover:border-green-600 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-white"
+              className="w-full sm:w-auto text-sm border-2 border-green-500 dark:border-green-600 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950 hover:border-green-600 dark:hover:border-green-500 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-background disabled:border-border disabled:text-muted-foreground disabled:hover:bg-background dark:disabled:hover:bg-background"
             >
               <UserPlus className="w-4 h-4 mr-1 sm:mr-2 flex-shrink-0" />
               <span className="hidden sm:inline">Dodaj ucznia</span>
@@ -134,7 +134,7 @@ export function Toolbar({
             variant="outline"
             onClick={onToggleAllAttendance}
             disabled={!selectedGroup || studentCount === 0}
-            className="w-full sm:w-auto text-sm border-2 border-blue-500 text-blue-700 hover:bg-blue-50 hover:border-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-white"
+            className="w-full sm:w-auto text-sm border-2 border-blue-500 dark:border-blue-600 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 hover:border-blue-600 dark:hover:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-background disabled:border-border disabled:text-muted-foreground disabled:hover:bg-background dark:disabled:hover:bg-background"
             data-testid="button-toggle-all"
           >
             <CheckCheck className="w-4 h-4 mr-1 sm:mr-2 flex-shrink-0" />

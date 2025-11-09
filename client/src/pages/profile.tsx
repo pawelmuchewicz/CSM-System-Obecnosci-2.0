@@ -147,33 +147,30 @@ export default function ProfilePage() {
                 {isEditingProfile ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="profile-firstName" className="text-sm font-medium text-gray-700">Imię</Label>
+                      <Label htmlFor="profile-firstName" className="text-sm font-medium text-foreground">Imię</Label>
                       <Input
                         id="profile-firstName"
                         value={editedProfile.firstName}
                         onChange={(e) => setEditedProfile(prev => ({ ...prev, firstName: e.target.value }))}
-                        className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                         placeholder="Wprowadź imię"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="profile-lastName" className="text-sm font-medium text-gray-700">Nazwisko</Label>
+                      <Label htmlFor="profile-lastName" className="text-sm font-medium text-foreground">Nazwisko</Label>
                       <Input
                         id="profile-lastName"
                         value={editedProfile.lastName}
                         onChange={(e) => setEditedProfile(prev => ({ ...prev, lastName: e.target.value }))}
-                        className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                         placeholder="Wprowadź nazwisko"
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <Label htmlFor="profile-email" className="text-sm font-medium text-gray-700">Email</Label>
+                      <Label htmlFor="profile-email" className="text-sm font-medium text-foreground">Email</Label>
                       <Input
                         id="profile-email"
                         type="email"
                         value={editedProfile.email}
                         onChange={(e) => setEditedProfile(prev => ({ ...prev, email: e.target.value }))}
-                        className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                         placeholder="Wprowadź adres email"
                       />
                     </div>
@@ -193,23 +190,23 @@ export default function ProfilePage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="p-4 bg-gray-50 rounded-lg border">
-                      <Label className="text-sm font-medium text-gray-700">Imię i nazwisko</Label>
+                    <div className="p-4 bg-muted rounded-lg border">
+                      <Label className="text-sm font-medium text-foreground">Imię i nazwisko</Label>
                       <p className="text-lg font-medium mt-1">{user.firstName} {user.lastName}</p>
                     </div>
-                    
-                    <div className="p-4 bg-gray-50 rounded-lg border">
-                      <Label className="text-sm font-medium text-gray-700">Nazwa użytkownika</Label>
+
+                    <div className="p-4 bg-muted rounded-lg border">
+                      <Label className="text-sm font-medium text-foreground">Nazwa użytkownika</Label>
                       <p className="text-lg font-mono mt-1">@{user.username}</p>
                     </div>
-                    
-                    <div className="p-4 bg-gray-50 rounded-lg border">
-                      <Label className="text-sm font-medium text-gray-700">Email</Label>
+
+                    <div className="p-4 bg-muted rounded-lg border">
+                      <Label className="text-sm font-medium text-foreground">Email</Label>
                       <p className="text-lg mt-1">{user.email || 'Brak adresu email'}</p>
                     </div>
-                    
-                    <div className="p-4 bg-gray-50 rounded-lg border">
-                      <Label className="text-sm font-medium text-gray-700">Rola w systemie</Label>
+
+                    <div className="p-4 bg-muted rounded-lg border">
+                      <Label className="text-sm font-medium text-foreground">Rola w systemie</Label>
                       <div className="mt-1">
                         <Badge variant="secondary" className="text-sm">
                           {getRoleDisplayName(user.role)}

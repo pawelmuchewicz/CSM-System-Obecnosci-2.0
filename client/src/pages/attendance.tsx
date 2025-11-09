@@ -226,7 +226,7 @@ export default function AttendancePage() {
   return (
     <div className="min-h-full">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-background shadow-sm border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
@@ -234,17 +234,17 @@ export default function AttendancePage() {
                 <Users className="text-primary text-2xl" />
               </div>
               <div className="ml-3">
-                <h1 className="text-xl font-semibold text-gray-900">Creative Dance</h1>
-                <p className="text-sm text-gray-500">
+                <h1 className="text-xl font-semibold text-foreground">Creative Dance</h1>
+                <p className="text-sm text-muted-foreground">
                   {user ? `${user.firstName} ${user.lastName}` : 'Ładowanie...'}
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-muted-foreground">
                 <span>{user ? getRoleDisplayName(user.role) : 'Ładowanie...'}</span>
               </div>
-              <div className="h-8 w-8 bg-primary-100 rounded-full flex items-center justify-center">
+              <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center">
                 <Users className="text-primary text-sm" />
               </div>
             </div>
@@ -273,10 +273,10 @@ export default function AttendancePage() {
 
         {/* Conflict Banner */}
         {conflicts.length > 0 && (
-          <Alert className="mb-6 border-l-4 border-yellow-400 bg-yellow-50">
-            <AlertTriangle className="h-4 w-4 text-yellow-400" />
-            <AlertDescription className="text-yellow-700">
-              <strong>Wykryto konflikty:</strong> Niektóre wpisy zostały zmienione przez innego użytkownika. 
+          <Alert className="mb-6 border-l-4 border-yellow-400 dark:border-yellow-600 bg-yellow-50 dark:bg-yellow-950">
+            <AlertTriangle className="h-4 w-4 text-yellow-400 dark:text-yellow-500" />
+            <AlertDescription className="text-yellow-700 dark:text-yellow-300">
+              <strong>Wykryto konflikty:</strong> Niektóre wpisy zostały zmienione przez innego użytkownika.
               Odśwież dane aby zobaczyć najnowszy stan.
             </AlertDescription>
           </Alert>
@@ -284,7 +284,7 @@ export default function AttendancePage() {
 
         {/* Loading State */}
         {isLoading && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-card rounded-lg shadow-sm border border-border">
             <LoadingSpinner size="md" text="Ładowanie uczniów..." />
           </div>
         )}

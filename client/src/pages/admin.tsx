@@ -174,7 +174,7 @@ export default function AdminPage() {
             <CardHeader>
               <CardTitle>Konta oczekujące na zatwierdzenie</CardTitle>
               <p className="text-sm text-muted-foreground mt-2">
-                <code className="bg-gray-100 px-1 rounded">wybierz funkcję dla użytkownika</code>
+                <code className="bg-muted px-1 rounded">wybierz funkcję dla użytkownika</code>
               </p>
             </CardHeader>
             <CardContent>
@@ -563,61 +563,57 @@ function AllUsersTab() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="firstName" className="text-sm font-medium text-gray-700">Imię *</Label>
+                      <Label htmlFor="firstName" className="text-sm font-medium text-foreground">Imię *</Label>
                       <Input
                         id="firstName"
                         value={newUser.firstName}
                         onChange={(e) => setNewUser(prev => ({ ...prev, firstName: e.target.value }))}
-                        className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                         placeholder="Wprowadź imię"
                         data-testid="input-first-name"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="lastName" className="text-sm font-medium text-gray-700">Nazwisko *</Label>
+                      <Label htmlFor="lastName" className="text-sm font-medium text-foreground">Nazwisko *</Label>
                       <Input
                         id="lastName"
                         value={newUser.lastName}
                         onChange={(e) => setNewUser(prev => ({ ...prev, lastName: e.target.value }))}
-                        className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                         placeholder="Wprowadź nazwisko"
                         data-testid="input-last-name"
                       />
                     </div>
                   </div>
-                  
+
                   <div>
-                    <Label htmlFor="username" className="text-sm font-medium text-gray-700">Nazwa użytkownika *</Label>
+                    <Label htmlFor="username" className="text-sm font-medium text-foreground">Nazwa użytkownika *</Label>
                     <Input
                       id="username"
                       value={newUser.username}
                       onChange={(e) => setNewUser(prev => ({ ...prev, username: e.target.value }))}
-                      className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       placeholder="Wprowadź nazwę użytkownika"
                       data-testid="input-username"
                     />
                   </div>
-                  
+
                   <div>
-                    <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email</Label>
+                    <Label htmlFor="email" className="text-sm font-medium text-foreground">Email</Label>
                     <Input
                       id="email"
                       type="email"
                       value={newUser.email}
                       onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
-                      className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       placeholder="Wprowadź adres email"
                       data-testid="input-email"
                     />
                   </div>
-                  
+
                   <div>
-                    <Label htmlFor="role" className="text-sm font-medium text-gray-700">Rola</Label>
+                    <Label htmlFor="role" className="text-sm font-medium text-foreground">Rola</Label>
                     <Select value={newUser.role} onValueChange={(value) => setNewUser(prev => ({ ...prev, role: value }))}>
-                      <SelectTrigger className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500" data-testid="select-role">
+                      <SelectTrigger data-testid="select-role">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-white border-gray-300">
+                      <SelectContent>
                         <SelectItem value="instructor">Instruktor</SelectItem>
                         <SelectItem value="reception">Recepcja</SelectItem>
                         <SelectItem value="owner">Właściciel</SelectItem>
@@ -773,61 +769,57 @@ function AllUsersTab() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="edit-firstName" className="text-sm font-medium text-gray-700">Imię *</Label>
+                  <Label htmlFor="edit-firstName" className="text-sm font-medium text-foreground">Imię *</Label>
                   <Input
                     id="edit-firstName"
                     value={editingUser.firstName}
                     onChange={(e) => setEditingUser(prev => prev ? { ...prev, firstName: e.target.value } : null)}
-                    className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     data-testid="input-edit-first-name"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-lastName" className="text-sm font-medium text-gray-700">Nazwisko *</Label>
+                  <Label htmlFor="edit-lastName" className="text-sm font-medium text-foreground">Nazwisko *</Label>
                   <Input
                     id="edit-lastName"
                     value={editingUser.lastName}
                     onChange={(e) => setEditingUser(prev => prev ? { ...prev, lastName: e.target.value } : null)}
-                    className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     data-testid="input-edit-last-name"
                   />
                 </div>
               </div>
-              
+
               <div>
-                <Label htmlFor="edit-username" className="text-sm font-medium text-gray-700">Nazwa użytkownika</Label>
+                <Label htmlFor="edit-username" className="text-sm font-medium text-foreground">Nazwa użytkownika</Label>
                 <Input
                   id="edit-username"
                   value={editingUser.username}
                   disabled
-                  className="mt-1 bg-gray-100 border-gray-300"
                   data-testid="input-edit-username"
                 />
-                <p className="text-xs text-gray-500 mt-1">Nazwa użytkownika nie może być zmieniona</p>
+                <p className="text-xs text-muted-foreground mt-1">Nazwa użytkownika nie może być zmieniona</p>
               </div>
-              
+
               <div>
-                <Label htmlFor="edit-email" className="text-sm font-medium text-gray-700">Email</Label>
+                <Label htmlFor="edit-email" className="text-sm font-medium text-foreground">Email</Label>
                 <Input
                   id="edit-email"
                   type="email"
                   value={editingUser.email}
                   onChange={(e) => setEditingUser(prev => prev ? { ...prev, email: e.target.value } : null)}
-                  className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   data-testid="input-edit-email"
                 />
               </div>
-              
+
               <div>
-                <Label htmlFor="edit-role" className="text-sm font-medium text-gray-700">Rola</Label>
-                <Select 
-                  value={editingUser.role} 
+                <Label htmlFor="edit-role" className="text-sm font-medium text-foreground">Rola</Label>
+                <Select
+                  value={editingUser.role}
                   onValueChange={(value) => setEditingUser(prev => prev ? { ...prev, role: value } : null)}
                 >
-                  <SelectTrigger className="mt-1 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500" data-testid="select-edit-role">
+                  <SelectTrigger data-testid="select-edit-role">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-white border-gray-300">
+                  <SelectContent>
                     <SelectItem value="instructor">Instruktor</SelectItem>
                     <SelectItem value="reception">Recepcja</SelectItem>
                     <SelectItem value="owner">Właściciel</SelectItem>
@@ -883,7 +875,6 @@ function AllUsersTab() {
                       id={`group-${group.id}`}
                       checked={selectedGroups.includes(group.id)}
                       onChange={() => toggleGroupSelection(group.id)}
-                      className="rounded border-gray-300"
                       data-testid={`checkbox-group-${group.id}`}
                     />
                     <Label htmlFor={`group-${group.id}`} className="flex-1 cursor-pointer">
@@ -1276,9 +1267,9 @@ function SheetsConfigTab() {
         ) : (
           <div className="space-y-4">
             {configs?.configs?.map((config) => (
-              <div 
-                key={config.id} 
-                className={`border rounded-lg p-4 ${!config.active ? 'opacity-60 bg-gray-50' : ''}`}
+              <div
+                key={config.id}
+                className={`border rounded-lg p-4 ${!config.active ? 'opacity-60 bg-muted' : ''}`}
               >
                 <div className="space-y-3">
                   <div className="space-y-2">
@@ -1295,7 +1286,7 @@ function SheetsConfigTab() {
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                         <span className="font-medium flex-shrink-0">ID arkusza:</span>
                         <div className="flex items-center gap-2">
-                          <code className="bg-gray-100 px-2 py-1 rounded text-xs break-all">
+                          <code className="bg-muted px-2 py-1 rounded text-xs break-all">
                             {config.spreadsheetId}
                           </code>
                           <a
@@ -1370,7 +1361,6 @@ function SheetsConfigTab() {
                   id="edit-groupId"
                   value={groupId}
                   disabled
-                  className="bg-gray-100"
                   data-testid="input-edit-group-id"
                 />
                 <p className="text-sm text-muted-foreground mt-1">
