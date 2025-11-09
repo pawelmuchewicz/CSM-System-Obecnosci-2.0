@@ -112,6 +112,31 @@ All routes in `server/routes.ts`:
 ### Caching Strategy
 Clear cache after mutations using `clearCache(pattern)`. Cache keys constructed with `getCacheKey(operation, ...params)`.
 
+## Dark Mode Implementation
+
+The application uses `next-themes` for dark mode support with full CSS variable-based styling.
+
+### Color System
+- Uses Tailwind CSS variables instead of hardcoded colors
+- Main variables: `bg-background`, `bg-card`, `bg-muted`, `text-foreground`, `text-muted-foreground`, `border-border`
+- All components use semantic color names that automatically adapt to light/dark mode
+
+### Pages with Full Dark Mode Support
+All main pages have been updated with complete dark mode support:
+- `pages/attendance.tsx` - Header, tables, footer, alert banners
+- `pages/admin.tsx` - Forms, dialogs, info boxes
+- `pages/profile.tsx` - User info boxes, edit forms
+- `pages/login.tsx`, `pages/register.tsx`, `pages/reset-password.tsx` - Auth forms
+- `components/attendance-table.tsx` - Table rows, badges, status colors with dark: variants
+- `components/toolbar.tsx` - Buttons, filters, badges
+
+### Important Pattern
+When adding new styles:
+- **DO NOT** use hardcoded colors like `text-gray-700`, `bg-white`, `border-gray-300`
+- **DO USE** CSS variables: `text-foreground`, `bg-card`, `border-border`
+- For dark mode specific styling: use `dark:` prefix (e.g., `dark:bg-blue-950`, `dark:text-blue-300`)
+- Input/Select components automatically inherit dark mode styles from shadcn/ui
+
 ## Security Notes
 
 - Passwords stored with bcrypt hashing
