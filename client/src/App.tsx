@@ -41,7 +41,7 @@ function Router() {
 
   // If authenticated, show the main app
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <Switch>
         <Route path="/" component={AttendancePage} />

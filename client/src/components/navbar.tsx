@@ -44,7 +44,7 @@ export function Navbar() {
   };
 
   return (
-    <nav className="border-b bg-white">
+    <nav className="border-b bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Desktop Navigation */}
         <div className="flex h-16 items-center justify-between">
@@ -174,7 +174,7 @@ export function Navbar() {
 
         {/* Mobile Navigation Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t bg-white">
+          <div className="md:hidden border-t bg-background">
             <div className="px-2 pt-2 pb-3 space-y-1">
               {/* Navigation Links */}
               {navItems.map((item) => {
